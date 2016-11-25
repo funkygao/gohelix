@@ -52,7 +52,7 @@ func main() {
 	log.Println("controller started")
 
 	manager := gohelix.NewHelixManager(zkSvr)
-	participant := manager.NewParticipant(cluster, "localhost", "12925")
+	participant := manager.NewParticipant(cluster, "localhost", "10925")
 	participant.AddPreConnectCallback(func() {
 		log.Println("participant trying conn...")
 	})

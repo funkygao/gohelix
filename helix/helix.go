@@ -26,7 +26,7 @@ func main() {
 		cli.StringFlag{
 			Name:   "zkSvr, z",
 			Usage:  "zookeeper connection string",
-			Value:  "localhost:2199",
+			Value:  "localhost:2181",
 			EnvVar: "ZOOKEEPER",
 		},
 		cli.BoolFlag{

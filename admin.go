@@ -109,6 +109,16 @@ func (adm Admin) DropCluster(cluster string) error {
 	return conn.DeleteTree(kb.cluster())
 }
 
+func (adm Admin) AllowParticipantAutoJoin(cluster string, yes bool) error {
+	var properties = map[string]string{
+		"allowParticipantAutoJoin": "false",
+	}
+	if yes {
+		properties["allowParticipantAutoJoin"] = "true"
+	}
+	return adm.SetConfig(cluster, "CLUSTER", properties)
+}
+
 // SetConfig set the configuration values for the cluster, defined by the config scope
 func (adm Admin) SetConfig(cluster string, scope string, properties map[string]string) error {
 	conn := newConnection(adm.ZkSvr)

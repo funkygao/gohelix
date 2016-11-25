@@ -31,6 +31,7 @@ var (
 type Participant struct {
 	// HelixManager
 	conn *connection
+
 	// zookeeper connection string
 	zkConnStr string
 
@@ -67,21 +68,6 @@ type Participant struct {
 
 	sync.Mutex
 }
-
-// NewParticipant creates a new participant
-// func NewParticipant(clusterID, host, port, zkAddrs string) *Participant {
-// 	return &Participant{
-// 		ClusterID:     clusterID,
-// 		Host:          host,
-// 		Port:          port,
-// 		ParticipantID: fmt.Sprintf("%s_%s", host, port),
-// 		started:       make(chan interface{}),
-// 		stop:          make(chan bool),
-// 		// message:       make(chan *Record),
-// 		stopWatch: make(chan bool),
-// 		keys:      KeyBuilder{clusterID},
-// 	}
-// }
 
 // Connect the participant. Before connecting we need to validate that
 // Zookeeper address are valid and also that the state models are registered.
@@ -120,8 +106,7 @@ func (p *Participant) Connect() error {
 	// clean up current state of previous sessions
 	p.cleanUp()
 
-	// start the event loop
-	p.loop()
+	p.startEventLoop()
 
 	// bring this participant alive.
 	p.createLiveInstance()
@@ -441,7 +426,7 @@ func (p *Participant) watchMessages() (chan []string, chan error) {
 
 // main event loop for the participant. It listens to the participant message in zookeeper
 // and for each update (messageChan), iterate all messages and process them
-func (p *Participant) loop() {
+func (p *Participant) startEventLoop() {
 	// we need to keep a history of the messages that have been processed, so we don't process
 	// them again. Start a goroutine to clean up this history once every 5 seconds so it won't
 	// take too much memory

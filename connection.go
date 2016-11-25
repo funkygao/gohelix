@@ -76,7 +76,9 @@ func (conn *connection) GetSessionID() string {
 }
 
 func (conn *connection) Disconnect() {
-	conn.zkConn.Close()
+	if conn.zkConn != nil {
+		conn.zkConn.Close()
+	}
 	conn.isConnected = false
 }
 
@@ -126,6 +128,7 @@ func (conn *connection) Exists(path string) (bool, error) {
 func (conn *connection) ExistsAll(paths ...string) (bool, error) {
 	for _, path := range paths {
 		if exists, err := conn.Exists(path); err != nil || exists == false {
+			println(path, "not exists")
 			return exists, err
 		}
 	}

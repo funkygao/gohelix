@@ -96,6 +96,6 @@ func (m *HelixManager) NewParticipant(clusterID string, host string, port string
 		started:       make(chan interface{}),
 		stop:          make(chan bool),
 		stopWatch:     make(chan bool),
-		keys:          KeyBuilder{clusterID},
+		keys:          KeyBuilder{ClusterID: clusterID},
 	}
 }

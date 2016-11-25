@@ -1,46 +1,16 @@
 package gohelix
 
 import (
-	"bytes"
+	"bufio"
 	"fmt"
-	"io/ioutil"
-	"os/exec"
 	"strings"
 
-	"code.google.com/p/go.crypto/ssh"
+	"github.com/funkygao/golib/pipestream"
 )
 
 // AddTestCluster calls helix-admin.sh --zkSvr localhost:2181 --addCluster
 func AddTestCluster(cluster string) error {
 	cmd := "/opt/helix/bin/helix-admin.sh --zkSvr localhost:2181 --addCluster " + strings.TrimSpace(cluster)
-	if _, err := RunCommand(cmd); err != nil {
-		return err
-	}
-	return nil
-}
-
-// AddNode /opt/helix/bin/helix-admin.sh --zkSvr localhost:2181  --addNode
-func AddNode(cluster string, host string, port string) error {
-
-	cmd := fmt.Sprintf("/opt/helix/bin/helix-admin.sh --zkSvr localhost:2181  --addNode %s %s:%s", cluster, host, port)
-	if _, err := RunCommand(cmd); err != nil {
-		return err
-	}
-	return nil
-}
-
-// AddResource /opt/helix/bin/helix-admin.sh --zkSvr localhost:2181 --addResource
-func AddResource(cluster string, resource string, replica string) error {
-	cmd := fmt.Sprintf("/opt/helix/bin/helix-admin.sh --zkSvr localhost:2181 --addResource %s %s %s MasterSlave", cluster, resource, replica)
-	if _, err := RunCommand(cmd); err != nil {
-		return err
-	}
-	return nil
-}
-
-// Rebalance /opt/helix/bin/helix-admin.sh --zkSvr localhost:2181 --rebalance
-func Rebalance(cluster string, resource string, replica string) error {
-	cmd := fmt.Sprintf("/opt/helix/bin/helix-admin.sh --zkSvr localhost:2181 --rebalance %s %s %s", cluster, resource, replica)
 	if _, err := RunCommand(cmd); err != nil {
 		return err
 	}
@@ -56,9 +26,41 @@ func DropTestCluster(cluster string) error {
 	return nil
 }
 
-// StartController sudo /usr/bin/supervisorctl start helixcontroller
-func StartController() error {
-	if _, err := RunCommand("sudo /usr/bin/supervisorctl start helixcontroller"); err != nil {
+// AddNode /opt/helix/bin/helix-admin.sh --zkSvr localhost:2181  --addNode
+func AddNode(cluster string, host string, port string) error {
+	cmd := "/opt/helix/bin/helix-admin.sh"
+	if _, err := execCommand(cmd,
+		"--zkSvr", "localhost:2181", "--addNode", fmt.Sprintf("%s:%s", host, port)); err != nil {
+		return err
+	}
+	return nil
+}
+
+// AddResource /opt/helix/bin/helix-admin.sh --zkSvr localhost:2181 --addResource
+func AddResource(cluster string, resource string, replica string) error {
+	cmd := "/opt/helix/bin/helix-admin.sh"
+	if _, err := execCommand(cmd,
+		"--zkSvr", "localhost:2181", "--addResource", cluster, resource, replica); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Rebalance /opt/helix/bin/helix-admin.sh --zkSvr localhost:2181 --rebalance
+func Rebalance(cluster string, resource string, replica string) error {
+	cmd := "/opt/helix/bin/helix-admin.sh"
+	if _, err := execCommand(cmd,
+		"--zkSvr", "localhost:2181", "--rebalance", cluster, resource, replica); err != nil {
+		return err
+	}
+	return nil
+}
+
+// StartController
+func StartController(cluster string) error {
+	cmd := "/opt/helix/bin/run-helix-controller.sh"
+	if _, err := execCommand(cmd,
+		"--zkSvr", "localhost:2181", "--cluster", cluster); err != nil {
 		return err
 	}
 	return nil
@@ -92,64 +94,28 @@ func StopParticipant(port string) error {
 	return nil
 }
 
-// RunCommand execute command via ssh
-func RunCommand(command string) (string, error) {
-	key, err := getKeyFile()
+func execCommand(command string, args ...string) (string, error) {
+	cmd := pipestream.New(command, args...)
+	err := cmd.Open()
 	if err != nil {
 		return "", err
 	}
+	defer cmd.Close()
 
-	config := &ssh.ClientConfig{
-		User: "vagrant",
-		Auth: []ssh.AuthMethod{
-			ssh.PublicKeys(key),
-		},
+	scanner := bufio.NewScanner(cmd.Reader())
+	scanner.Split(bufio.ScanLines)
+
+	output := make([]string, 0)
+	for scanner.Scan() {
+		output = append(output, scanner.Text())
 	}
-
-	client, err := ssh.Dial("tcp", "127.0.0.1:2222", config)
-
-	session, err := client.NewSession()
-	if err != nil {
-		return "", err
+	if scanner.Err() != nil {
+		return "", scanner.Err()
 	}
-	defer session.Close()
-
-	var b bytes.Buffer
-	session.Stdout = &b
-
-	if err := session.Run(command); err != nil {
-		return "", err
-	}
-	return b.String(), nil
+	return "", nil
 }
 
-func getKeyFile() (key ssh.Signer, err error) {
-	out, err := exec.Command("/usr/bin/vagrant", "ssh-config").Output()
-	if err != nil {
-		return
-	}
-
-	identityFile := ""
-	lines := strings.Split(string(out), "\n")
-	for _, line := range lines {
-		if strings.Contains(line, "IdentityFile") {
-			parts := strings.Fields(line)
-			identityFile = parts[1]
-			break
-		}
-	}
-
-	if identityFile == "" {
-		return
-	}
-
-	buf, err := ioutil.ReadFile(identityFile)
-	if err != nil {
-		return
-	}
-	key, err = ssh.ParsePrivateKey(buf)
-	if err != nil {
-		return
-	}
-	return
+// RunCommand execute command via ssh
+func RunCommand(command string) (string, error) {
+	return "", nil
 }

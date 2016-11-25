@@ -582,7 +582,8 @@ func (s *Spectator) watchExternalView() {
 			// now need to block the loop to wait for the next update event
 			evt := <-events
 			if evt.Err != nil {
-				panic(evt.Err)
+				//panic(evt.Err)
+				fmt.Println(evt.Err)
 				return
 			}
 		}

@@ -1,8 +1,16 @@
 package gohelix
 
+const (
+	StateModelLeaderStandby      = "LeaderStandby"
+	StateModelMasterSlave        = "MasterSlave"
+	StateModelOnlineOffline      = "OnlineOffline"
+	StateModelSchedulerTaskQueue = "SchedulerTaskQueue"
+	StateModelTask               = "Task"
+)
+
 // HelixDefaultNodes
 var HelixDefaultNodes = map[string]string{
-	"LeaderStandby": `
+	StateModelLeaderStandby: `
 {
   "id" : "LeaderStandby",
   "mapFields" : {
@@ -43,7 +51,7 @@ var HelixDefaultNodes = map[string]string{
   }
 }
 `,
-	"MasterSlave": `
+	StateModelMasterSlave: `
 {
   "id" : "MasterSlave",
   "mapFields" : {
@@ -91,7 +99,7 @@ var HelixDefaultNodes = map[string]string{
   }
 }
 `,
-	"OnlineOffline": `
+	StateModelOnlineOffline: `
 {
   "id" : "OnlineOffline",
   "mapFields" : {
@@ -161,7 +169,7 @@ var HelixDefaultNodes = map[string]string{
 }
 `,
 
-	"SchedulerTaskQueue": `
+	StateModelSchedulerTaskQueue: `
 {
   "id" : "SchedulerTaskQueue",
   "mapFields" : {
@@ -197,7 +205,7 @@ var HelixDefaultNodes = map[string]string{
 }
 `,
 
-	"Task": `
+	StateModelTask: `
 {
   "id" : "Task",
   "mapFields" : {

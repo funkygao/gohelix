@@ -39,6 +39,10 @@ type Admin struct {
 	ZkSvr string
 }
 
+func NewZKHelixAdmin(zkSvr string) *Admin {
+	return &Admin{ZkSvr: zkSvr}
+}
+
 // AddCluster add a cluster to Helix. As a result, a znode will be created in zookeeper
 // root named after the cluster name, and corresponding data structures are populated
 // under this znode.
@@ -50,68 +54,59 @@ func (adm Admin) AddCluster(cluster string) bool {
 	}
 	defer conn.Disconnect()
 
-	kb := KeyBuilder{cluster}
-	// c = "/<cluster>"
-	c := kb.cluster()
+	kb := KeyBuilder{ClusterID: cluster}
 
 	// check if cluster already exists
-	exists, err := conn.Exists(c)
+	exists, err := conn.Exists(kb.cluster())
 	must(err)
 	if exists {
 		return false
 	}
 
-	conn.CreateEmptyNode(c)
+	conn.CreateEmptyNode(kb.cluster())
+	conn.CreateEmptyNode(kb.propertyStore())
+	conn.CreateEmptyNode(kb.instances())
+	conn.CreateEmptyNode(kb.idealStates())
+	conn.CreateEmptyNode(kb.externalView())
+	conn.CreateEmptyNode(kb.liveInstances())
 
-	// PROPERTYSTORE is an empty node
-	propertyStore := fmt.Sprintf("/%s/PROPERTYSTORE", cluster)
-	conn.CreateEmptyNode(propertyStore)
+	conn.CreateEmptyNode(kb.stateModels())
+	conn.CreateRecordWithData(kb.stateModel(StateModelLeaderStandby), HelixDefaultNodes[StateModelLeaderStandby])
+	conn.CreateRecordWithData(kb.stateModel(StateModelMasterSlave), HelixDefaultNodes[StateModelMasterSlave])
+	conn.CreateRecordWithData(kb.stateModel(StateModelOnlineOffline), HelixDefaultNodes[StateModelOnlineOffline])
+	conn.CreateRecordWithData(kb.stateModel("STORAGE_DEFAULT_SM_SCHEMATA"), HelixDefaultNodes["STORAGE_DEFAULT_SM_SCHEMATA"])
+	conn.CreateRecordWithData(kb.stateModel(StateModelSchedulerTaskQueue), HelixDefaultNodes[StateModelSchedulerTaskQueue])
+	conn.CreateRecordWithData(kb.stateModel(StateModelTask), HelixDefaultNodes[StateModelTask])
 
-	// STATEMODELDEFS has 6 children
-	stateModelDefs := fmt.Sprintf("/%s/STATEMODELDEFS", cluster)
-	conn.CreateEmptyNode(stateModelDefs)
-	conn.CreateRecordWithData(stateModelDefs+"/LeaderStandby", HelixDefaultNodes["LeaderStandby"])
-	conn.CreateRecordWithData(stateModelDefs+"/MasterSlave", HelixDefaultNodes["MasterSlave"])
-	conn.CreateRecordWithData(stateModelDefs+"/OnlineOffline", HelixDefaultNodes["OnlineOffline"])
-	conn.CreateRecordWithData(stateModelDefs+"/STORAGE_DEFAULT_SM_SCHEMATA", HelixDefaultNodes["STORAGE_DEFAULT_SM_SCHEMATA"])
-	conn.CreateRecordWithData(stateModelDefs+"/SchedulerTaskQueue", HelixDefaultNodes["SchedulerTaskQueue"])
-	conn.CreateRecordWithData(stateModelDefs+"/Task", HelixDefaultNodes["Task"])
-
-	// INSTANCES is initailly an empty node
-	instances := fmt.Sprintf("/%s/INSTANCES", cluster)
-	conn.CreateEmptyNode(instances)
-
-	// CONFIGS has 3 children: CLUSTER, RESOURCE, PARTICIPANT
-	configs := fmt.Sprintf("/%s/CONFIGS", cluster)
-	conn.CreateEmptyNode(configs)
-	conn.CreateEmptyNode(configs + "/PARTICIPANT")
-	conn.CreateEmptyNode(configs + "/RESOURCE")
-	conn.CreateEmptyNode(configs + "/CLUSTER")
+	conn.CreateEmptyNode(kb.configs())
+	conn.CreateEmptyNode(kb.participantConfigs())
+	conn.CreateEmptyNode(kb.resourceConfigs())
+	conn.CreateEmptyNode(kb.clusterConfigs())
 
 	clusterNode := NewRecord(cluster)
-	conn.CreateRecordWithPath(configs+"/CLUSTER/"+cluster, clusterNode)
+	conn.CreateRecordWithPath(kb.clusterConfig(), clusterNode)
 
-	// empty ideal states
-	idealStates := fmt.Sprintf("/%s/IDEALSTATES", cluster)
-	conn.CreateEmptyNode(idealStates)
-
-	// empty external view
-	externalView := fmt.Sprintf("/%s/EXTERNALVIEW", cluster)
-	conn.CreateEmptyNode(externalView)
-
-	// empty live instances
-	liveInstances := fmt.Sprintf("/%s/LIVEINSTANCES", cluster)
-	conn.CreateEmptyNode(liveInstances)
-
-	// CONTROLLER has four childrens: [ERRORS, HISTORY, MESSAGES, STATUSUPDATES]
-	controller := fmt.Sprintf("/%s/CONTROLLER", cluster)
-	conn.CreateEmptyNode(controller)
-	conn.CreateEmptyNode(controller + "/ERRORS")
-	conn.CreateEmptyNode(controller + "/HISTORY")
-	conn.CreateEmptyNode(controller + "/MESSAGES")
-	conn.CreateEmptyNode(controller + "/STATUSUPDATES")
+	conn.CreateEmptyNode(kb.controller())
+	conn.CreateEmptyNode(kb.controllerErrors())
+	conn.CreateEmptyNode(kb.controllerHistory())
+	conn.CreateEmptyNode(kb.controllerMessages())
+	conn.CreateEmptyNode(kb.controllerStatusUpdates())
 
 	return true
+}
+
+// DropCluster removes a helix cluster from zookeeper. This will remove the
+// znode named after the cluster name from the zookeeper root.
+func (adm Admin) DropCluster(cluster string) error {
+	conn := newConnection(adm.ZkSvr)
+	err := conn.Connect()
+	if err != nil {
+		return err
+	}
+	defer conn.Disconnect()
+
+	kb := KeyBuilder{ClusterID: cluster}
+	return conn.DeleteTree(kb.cluster())
 }
 
 // SetConfig set the configuration values for the cluster, defined by the config scope
@@ -170,22 +165,6 @@ func (adm Admin) GetConfig(cluster string, scope string, keys []string) map[stri
 	return result
 }
 
-// DropCluster removes a helix cluster from zookeeper. This will remove the
-// znode named after the cluster name from the zookeeper root.
-func (adm Admin) DropCluster(cluster string) error {
-	conn := newConnection(adm.ZkSvr)
-	err := conn.Connect()
-	if err != nil {
-		return err
-	}
-	defer conn.Disconnect()
-
-	kb := KeyBuilder{cluster}
-	c := kb.cluster()
-
-	return conn.DeleteTree(c)
-}
-
 // AddNode is the internal implementation corresponding to command
 // ./helix-admin.sh --zkSvr <ZookeeperServerAddress> --addNode <clusterName instanceId>
 // node is in the form of host_port
@@ -202,7 +181,7 @@ func (adm Admin) AddNode(cluster string, node string) error {
 	}
 
 	// check if node already exists under /<cluster>/CONFIGS/PARTICIPANT/<NODE>
-	keys := KeyBuilder{cluster}
+	keys := KeyBuilder{ClusterID: cluster}
 	path := keys.participantConfig(node)
 	exists, err := conn.Exists(path)
 	must(err)
@@ -271,7 +250,7 @@ func (adm Admin) AddResource(cluster string, resource string, partitions int, st
 		return ErrClusterNotSetup
 	}
 
-	keys := KeyBuilder{cluster}
+	keys := KeyBuilder{ClusterID: cluster}
 
 	// make sure the state model def exists
 	if exists, err := conn.Exists(keys.stateModel(stateModel)); !exists || err != nil {
@@ -298,8 +277,8 @@ func (adm Admin) AddResource(cluster string, resource string, partitions int, st
 
 	is := NewRecord(resource)
 	is.SetSimpleField("NUM_PARTITIONS", strconv.Itoa(partitions))
-	is.SetSimpleField("REPLICAS", strconv.Itoa(0))
-	is.SetSimpleField("REBALANCE_MODE", strings.ToUpper("SEMI_AUTO"))
+	is.SetSimpleField("REPLICAS", strconv.Itoa(0))                    // TODO
+	is.SetSimpleField("REBALANCE_MODE", strings.ToUpper("SEMI_AUTO")) // TODO
 	is.SetSimpleField("STATE_MODEL_DEF_REF", stateModel)
 	conn.CreateRecordWithPath(isPath, is)
 
@@ -390,7 +369,7 @@ func (adm Admin) DisableResource(cluster string, resource string) error {
 	return nil
 }
 
-// Rebalance not implemented yet
+// Rebalance not implemented yet TODO
 func (adm Admin) Rebalance(cluster string, resource string, replicationFactor int) {
 	conn := newConnection(adm.ZkSvr)
 	err := conn.Connect()

@@ -13,6 +13,14 @@ func (k *KeyBuilder) cluster() string {
 	return fmt.Sprintf("/%s", k.ClusterID)
 }
 
+func (k *KeyBuilder) configs() string {
+	return fmt.Sprintf("/%s/CONFIGS", k.ClusterID)
+}
+
+func (k *KeyBuilder) clusterConfigs() string {
+	return fmt.Sprintf("/%s/CONFIGS/CLUSTER", k.ClusterID)
+}
+
 func (k *KeyBuilder) clusterConfig() string {
 	return fmt.Sprintf("/%s/CONFIGS/CLUSTER/%s", k.ClusterID, k.ClusterID)
 }
@@ -59,6 +67,10 @@ func (k *KeyBuilder) idealStates() string {
 
 func (k *KeyBuilder) idealStateForResource(resource string) string {
 	return fmt.Sprintf("/%s/IDEALSTATES/%s", k.ClusterID, resource)
+}
+
+func (k *KeyBuilder) resourceConfigs() string {
+	return fmt.Sprintf("/%s/CONFIGS/RESOURCE", k.ClusterID)
 }
 
 func (k *KeyBuilder) resourceConfig(resource string) string {

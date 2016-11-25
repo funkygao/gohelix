@@ -81,10 +81,7 @@ func (conn *connection) Disconnect() {
 }
 
 func (conn *connection) CreateEmptyNode(path string) {
-	flags := int32(0)
-	acl := zk.WorldACL(zk.PermAll)
-	_, err := conn.Create(path, []byte(""), flags, acl)
-	must(err)
+	conn.CreateRecordWithData(path, "")
 }
 
 func (conn *connection) CreateRecordWithData(path string, data string) {
@@ -99,12 +96,11 @@ func (conn *connection) CreateRecordWithPath(p string, r *Record) {
 	parent := path.Dir(p)
 	conn.ensurePath(parent)
 
-	flags := int32(0)
-	acl := zk.WorldACL(zk.PermAll)
-
 	data, err := r.Marshal()
 	must(err)
 
+	flags := int32(0)
+	acl := zk.WorldACL(zk.PermAll)
 	_, err = conn.Create(p, data, flags, acl)
 	must(err)
 }

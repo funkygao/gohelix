@@ -26,5 +26,6 @@ func (sm *StateModel) Size() int {
 // AddTransition add a state transition handler to the state model
 func (sm *StateModel) AddTransition(fromState string, toState string, handler func(string)) {
 	transition := Transition{fromState, toState, handler}
+	// TODO validate
 	sm.transitions = append(sm.transitions, transition)
 }

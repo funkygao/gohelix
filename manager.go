@@ -41,7 +41,7 @@ type (
 	MessageListener func(instance string, messages []*Record, context *Context)
 )
 
-// HelixManager manages the Helix client connections and roles
+// The Helix manager is a common component that connects each system component with the controller.
 type HelixManager struct {
 	zkAddress string
 	conn      *connection

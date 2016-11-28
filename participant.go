@@ -21,12 +21,6 @@ const (
 	psDisconnected participantState = 3
 )
 
-var (
-	// ErrEnsureParticipantConfig is returned when participant configuration cannot be
-	// created in zookeeper
-	ErrEnsureParticipantConfig = errors.New("Participant configuration could not be added")
-)
-
 // Participant is a Helix participant node
 type Participant struct {
 	// HelixManager

@@ -1,11 +1,12 @@
 package main
 
 import (
-	"github.com/funkygao/gohelix"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/funkygao/gohelix"
 )
 
 const (
@@ -72,6 +73,9 @@ func main() {
 	err = participant.Connect()
 	must(err)
 	log.Println("participant connected")
+
+	instances, _ := admin.GetInstances(cluster)
+	log.Printf("instances: %+v", instances)
 
 	go func() {
 		err = gohelix.Rebalance(cluster, resource, "2")

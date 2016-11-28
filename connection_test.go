@@ -18,7 +18,7 @@ func TestEnsurePath(t *testing.T) {
 	cluster := "gohelix_connection_test_" + now.Format("20060102150405")
 	p := fmt.Sprintf("/%s/a/b/c", cluster)
 
-	err = conn.ensurePath(p)
+	err = conn.ensurePathExists(p)
 	if err != nil {
 		t.Error(err.Error())
 	}

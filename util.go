@@ -119,3 +119,9 @@ func execCommand(command string, args ...string) (string, error) {
 func RunCommand(command string) (string, error) {
 	return "", nil
 }
+
+func must(err error) {
+	if err != nil {
+		panic(err)
+	}
+}

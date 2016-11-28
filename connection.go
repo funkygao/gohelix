@@ -13,21 +13,24 @@ import (
 
 var (
 	zkRetryOptions = retry.RetryOptions{
-		"zookeeper",
-		time.Millisecond * 10,
-		time.Second * 1,
-		1,
-		0, // infinit retry
-		false,
+		"zookeeper",           // tag
+		time.Millisecond * 10, // backoff
+		time.Second * 1,       // max backoff
+		1,                     // default backoff constant
+		0,                     // infinit retry
+		false,                 // use V(1) level for log messages
 	}
 )
 
 type connection struct {
-	zkSvr       string
-	zkConn      *zk.Conn
-	isConnected bool
-	stat        *zk.Stat
 	sync.RWMutex
+
+	zkSvr       string
+	chroot      string
+	isConnected bool
+
+	zkConn *zk.Conn
+	stat   *zk.Stat
 }
 
 func newConnection(zkSvr string) *connection {
@@ -38,6 +41,7 @@ func newConnection(zkSvr string) *connection {
 	return &conn
 }
 
+// TODO chroot
 func (conn *connection) Connect() error {
 	zkServers := strings.Split(strings.TrimSpace(conn.zkSvr), ",")
 	zkConn, _, err := zk.Connect(zkServers, 15*time.Second)
@@ -45,8 +49,7 @@ func (conn *connection) Connect() error {
 		return err
 	}
 
-	_, _, err = zkConn.Exists("/zookeeper")
-	if err != nil {
+	if err = conn.waitUntilConnected(); err != nil {
 		return err
 	}
 
@@ -56,13 +59,20 @@ func (conn *connection) Connect() error {
 	return nil
 }
 
+func (conn *connection) waitUntilConnected() error {
+	if _, _, err := zkConn.Exists("/zookeeper"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (conn *connection) IsConnected() bool {
 	if conn == nil || conn.isConnected == false {
 		return false
 	}
 
-	_, _, err := conn.zkConn.Exists("/zookeeper")
-	if err != nil {
+	if err := conn.waitUntilConnected(); err != nil {
 		conn.isConnected = false
 		return false
 	}
@@ -82,29 +92,35 @@ func (conn *connection) Disconnect() {
 	conn.isConnected = false
 }
 
-func (conn *connection) CreateEmptyNode(path string) {
-	conn.CreateRecordWithData(path, "")
+func (conn *connection) isClusterSetup(cluster string) bool {
+	return true // TODO
 }
 
-func (conn *connection) CreateRecordWithData(path string, data string) {
+func (conn *connection) CreateEmptyNode(path string) error {
+	return conn.CreateRecordWithData(path, "")
+}
+
+func (conn *connection) CreateRecordWithData(path string, data string) error {
 	flags := int32(0)
 	acl := zk.WorldACL(zk.PermAll)
 
 	_, err := conn.Create(path, []byte(data), flags, acl)
-	must(err)
+	return err
 }
 
-func (conn *connection) CreateRecordWithPath(p string, r *Record) {
+func (conn *connection) CreateRecordWithPath(p string, r *Record) error {
 	parent := path.Dir(p)
-	conn.ensurePath(parent)
+	conn.ensurePathExists(parent)
 
 	data, err := r.Marshal()
-	must(err)
+	if err != nil {
+		return err
+	}
 
 	flags := int32(0)
 	acl := zk.WorldACL(zk.PermAll)
 	_, err = conn.Create(p, data, flags, acl)
-	must(err)
+	return err
 }
 
 func (conn *connection) Exists(path string) (bool, error) {
@@ -383,7 +399,7 @@ func (conn *connection) GetRecordFromPath(path string) (*Record, error) {
 
 func (conn *connection) SetRecordForPath(path string, r *Record) error {
 	if exists, _ := conn.Exists(path); !exists {
-		conn.ensurePath(path)
+		conn.ensurePathExists(path)
 	}
 
 	data, err := r.Marshal()
@@ -411,23 +427,16 @@ func (conn *connection) SetRecordForPath(path string, r *Record) error {
 
 // EnsurePath makes sure the specified path exists.
 // If not, create it
-func (conn *connection) ensurePath(p string) error {
+func (conn *connection) ensurePathExists(p string) error {
 	if exists, _ := conn.Exists(p); exists {
 		return nil
 	}
 
 	parent := path.Dir(p)
-
 	if exists, _ := conn.Exists(parent); !exists {
-		conn.ensurePath(parent)
+		conn.ensurePathExists(parent)
 	}
 
 	conn.CreateEmptyNode(p)
 	return nil
-}
-
-func must(err error) {
-	if err != nil {
-		panic(err)
-	}
 }

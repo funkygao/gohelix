@@ -22,15 +22,15 @@ func TestAddAndDropCluster(t *testing.T) {
 	cluster := "AdminTest_TestAddAndDropCluster_" + now.Format("20060102150405")
 
 	a := Admin{testZkSvr}
-	added := a.AddCluster(cluster)
-	if !added {
-		t.Error("Failed to add cluster: " + cluster)
+	err := a.AddCluster(cluster)
+	if err != nil {
+		t.Error(err)
 	}
 
-	// if cluster is already added, add it again and it should return false
-	added = a.AddCluster(cluster)
-	if added {
-		t.Error("Should fail to add the same cluster")
+	// if cluster is already added, add it again and it should return ErrNodeAlreadyExists
+	err = a.AddCluster(cluster)
+	if err != ErrNodeAlreadyExists {
+		t.Error(err)
 	}
 
 	//listClusters
@@ -51,8 +51,8 @@ func TestAddCluster(t *testing.T) {
 	cluster := "AdminTest_TestAddCluster" + now.Format("20060102150405")
 
 	a := Admin{testZkSvr}
-	added := a.AddCluster(cluster)
-	if added {
+	err := a.AddCluster(cluster)
+	if err == nil {
 		defer a.DropCluster(cluster)
 	}
 
@@ -93,8 +93,8 @@ func TestSetConfig(t *testing.T) {
 	cluster := "AdminTest_TestSetConfig_" + now.Format("20060102150405")
 
 	a := Admin{testZkSvr}
-	added := a.AddCluster(cluster)
-	if added {
+	err := a.AddCluster(cluster)
+	if err == nil {
 		defer a.DropCluster(cluster)
 	}
 

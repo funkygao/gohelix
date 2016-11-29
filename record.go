@@ -8,12 +8,19 @@ import (
 	"strings"
 )
 
-// Record represents a znode construct for Helix
+// Generic Record Format to store data at a Node This can be used to store
+// simpleFields mapFields listFields.
 type Record struct {
-	ID           string                       `json:"id"`
-	SimpleFields map[string]interface{}       `json:"simpleFields"`
-	ListFields   map[string]interface{}       `json:"listFields"`
-	MapFields    map[string]map[string]string `json:"mapFields"`
+	ID string `json:"id"`
+
+	// plain key, values fields
+	SimpleFields map[string]interface{} `json:"simpleFields"`
+
+	// all fields whose values are a list of values
+	ListFields map[string]interface{} `json:"listFields"`
+
+	// all fields whose values are key, value
+	MapFields map[string]map[string]string `json:"mapFields"`
 }
 
 // NewRecord creates a new instance of Record instance

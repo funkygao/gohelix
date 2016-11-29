@@ -4,7 +4,30 @@ import (
 	"fmt"
 )
 
-// keyBuilder geenrate a Zookeeper path
+// keyBuilder generates a Zookeeper path for helix.
+//
+// /{cluster}/CONFIGS
+// /{cluster}/CONFIGS/CLUSTER
+// /{cluster}/CONFIGS/CLUSTER/{cluster}
+// /{cluster}/CONFIGS/PARTICIPANT
+// /{cluster}/CONFIGS/RESOURCE
+// /{cluster}/CONTROLLER
+// /{cluster}/CONTROLLER/ERRORS
+// /{cluster}/CONTROLLER/HISTORY
+// /{cluster}/CONTROLLER/MESSAGES
+// /{cluster}/CONTROLLER/STATUSUPDATES
+// /{cluster}/EXTERNALVIEW
+// /{cluster}/IDEALSTATES
+// /{cluster}/INSTANCES
+// /{cluster}/LIVEINSTANCES
+// /{cluster}/PROPERTYSTORE
+// /{cluster}/STATEMODELDEFS
+// /{cluster}/STATEMODELDEFS/LeaderStandby
+// /{cluster}/STATEMODELDEFS/MasterSlave
+// /{cluster}/STATEMODELDEFS/OnlineOffline
+// /{cluster}/STATEMODELDEFS/STORAGE_DEFAULT_SM_SCHEMATA
+// /{cluster}/STATEMODELDEFS/SchedulerTaskQueue
+// /{cluster}/STATEMODELDEFS/Task
 type keyBuilder struct {
 	clusterID string
 }

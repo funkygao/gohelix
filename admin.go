@@ -114,7 +114,7 @@ func (adm Admin) AllowParticipantAutoJoin(cluster string, yes bool) error {
 	return adm.SetConfig(cluster, "CLUSTER", properties)
 }
 
-// ListClusterInfo shows the existing resources and instances in the glaster
+// ListClusterInfo shows the existing resources and instances in the cluster
 func (adm Admin) ListClusterInfo(cluster string) (string, error) {
 	conn := newConnection(adm.zkSvr)
 	err := conn.Connect()
@@ -128,16 +128,13 @@ func (adm Admin) ListClusterInfo(cluster string) (string, error) {
 		return "", ErrClusterNotSetup
 	}
 
-	keys := keyBuilder{cluster}
-	isPath := keys.idealStates()
-	instancesPath := keys.instances()
-
-	resources, err := conn.Children(isPath)
+	kb := keyBuilder{clusterID: cluster}
+	resources, err := conn.Children(kb.idealStates())
 	if err != nil {
 		return "", err
 	}
 
-	instances, err := conn.Children(instancesPath)
+	instances, err := conn.Children(kb.instances())
 	if err != nil {
 		return "", err
 	}
@@ -281,6 +278,10 @@ func (adm Admin) AddNode(cluster string, node string) error {
 	return nil
 }
 
+func (adm Admin) DropInstance(cluster string, ic InstanceConfig) error {
+	return adm.DropNode(cluster, ic.Node())
+}
+
 // DropNode removes a node from a cluster. The corresponding znodes
 // in zookeeper will be removed.
 func (adm Admin) DropNode(cluster string, node string) error {
@@ -292,21 +293,21 @@ func (adm Admin) DropNode(cluster string, node string) error {
 	defer conn.Disconnect()
 
 	// check if node already exists under /<cluster>/CONFIGS/PARTICIPANT/<node>
-	keys := keyBuilder{cluster}
-	if exists, err := conn.Exists(keys.participantConfig(node)); !exists || err != nil {
+	kb := keyBuilder{clusterID: cluster}
+	if exists, err := conn.Exists(kb.participantConfig(node)); !exists || err != nil {
 		return ErrNodeNotExist
 	}
 
 	// check if node exist under instance: /<cluster>/INSTANCES/<node>
-	if exists, err := conn.Exists(keys.instance(node)); !exists || err != nil {
+	if exists, err := conn.Exists(kb.instance(node)); !exists || err != nil {
 		return ErrInstanceNotExist
 	}
 
 	// delete /<cluster>/CONFIGS/PARTICIPANT/<node>
-	conn.DeleteTree(keys.participantConfig(node))
+	conn.DeleteTree(kb.participantConfig(node))
 
 	// delete /<cluster>/INSTANCES/<node>
-	conn.DeleteTree(keys.instance(node))
+	conn.DeleteTree(kb.instance(node))
 
 	return nil
 }
@@ -326,15 +327,15 @@ func (adm Admin) AddResource(cluster string, resource string, partitions int, st
 		return ErrClusterNotSetup
 	}
 
-	keys := keyBuilder{clusterID: cluster}
+	kb := keyBuilder{clusterID: cluster}
 
 	// make sure the state model def exists
-	if exists, err := conn.Exists(keys.stateModel(stateModel)); !exists || err != nil {
+	if exists, err := conn.Exists(kb.stateModel(stateModel)); !exists || err != nil {
 		return ErrStateModelDefNotExist
 	}
 
 	// make sure the path for the ideal state does not exit
-	isPath := keys.idealStates() + "/" + resource
+	isPath := kb.idealStates() + "/" + resource
 	if exists, err := conn.Exists(isPath); exists || err != nil {
 		if exists {
 			return ErrResourceExists
@@ -375,11 +376,10 @@ func (adm Admin) DropResource(cluster string, resource string) error {
 		return ErrClusterNotSetup
 	}
 
-	keys := keyBuilder{cluster}
-
 	// make sure the path for the ideal state does not exit
-	conn.DeleteTree(keys.idealStates() + "/" + resource)
-	conn.DeleteTree(keys.resourceConfig(resource))
+	kb := keyBuilder{clusterID: cluster}
+	conn.DeleteTree(kb.idealStateForResource(resource))
+	conn.DeleteTree(kb.resourceConfig(resource))
 
 	return nil
 }
@@ -398,10 +398,8 @@ func (adm Admin) EnableResource(cluster string, resource string) error {
 		return ErrClusterNotSetup
 	}
 
-	keys := keyBuilder{cluster}
-
-	isPath := keys.idealStates() + "/" + resource
-
+	kb := keyBuilder{clusterID: cluster}
+	isPath := kb.idealStateForResource(resource)
 	if exists, err := conn.Exists(isPath); !exists || err != nil {
 		if !exists {
 			return ErrResourceNotExists
@@ -428,10 +426,8 @@ func (adm Admin) DisableResource(cluster string, resource string) error {
 		return ErrClusterNotSetup
 	}
 
-	keys := keyBuilder{cluster}
-
-	isPath := keys.idealStates() + "/" + resource
-
+	kb := keyBuilder{clusterID: cluster}
+	isPath := kb.idealStateForResource(resource)
 	if exists, err := conn.Exists(isPath); !exists || err != nil {
 		if !exists {
 			return ErrResourceNotExists
@@ -472,9 +468,8 @@ func (adm Admin) ListResources(cluster string) (string, error) {
 		return "", ErrClusterNotSetup
 	}
 
-	keys := keyBuilder{cluster}
-	isPath := keys.idealStates()
-	resources, err := conn.Children(isPath)
+	kb := keyBuilder{clusterID: cluster}
+	resources, err := conn.Children(kb.idealStates())
 	if err != nil {
 		return "", err
 	}
@@ -503,9 +498,8 @@ func (adm Admin) ListInstances(cluster string) (string, error) {
 		return "", ErrClusterNotSetup
 	}
 
-	keys := keyBuilder{cluster}
-	isPath := keys.instances()
-	instances, err := conn.Children(isPath)
+	kb := keyBuilder{clusterID: cluster}
+	instances, err := conn.Children(kb.instances())
 	if err != nil {
 		return "", err
 	}
@@ -534,9 +528,8 @@ func (adm Admin) ListInstanceInfo(cluster string, instance string) (string, erro
 		return "", ErrClusterNotSetup
 	}
 
-	keys := keyBuilder{cluster}
-	instanceCfg := keys.participantConfig(instance)
-
+	kb := keyBuilder{clusterID: cluster}
+	instanceCfg := kb.participantConfig(instance)
 	if exists, err := conn.Exists(instanceCfg); !exists || err != nil {
 		if !exists {
 			return "", ErrNodeNotExist
@@ -560,19 +553,6 @@ func (adm Admin) GetInstances(cluster string) ([]string, error) {
 	}
 	defer conn.Disconnect()
 
-	kb := keyBuilder{cluster}
+	kb := keyBuilder{clusterID: cluster}
 	return conn.Children(kb.instances())
-}
-
-// DropInstance removes a participating instance from the helix cluster
-func (adm Admin) DropInstance(zkSvr string, cluster string, instance string) error {
-	conn := newConnection(adm.zkSvr)
-	if err := conn.Connect(); err != nil {
-		return err
-	}
-	defer conn.Disconnect()
-
-	kb := keyBuilder{cluster}
-	instanceKey := kb.instance(instance)
-	return conn.Delete(instanceKey)
 }

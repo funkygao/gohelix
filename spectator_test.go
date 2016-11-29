@@ -9,7 +9,7 @@ func TestSpectatorConnect(t *testing.T) {
 	now := time.Now().Local()
 	cluster := "spactator_test_TestSpectatorConnect_" + now.Format("20060102150405")
 
-	a := Admin{testZkSvr}
+	a := Admin{zkSvr: testZkSvr}
 	a.AddCluster(cluster)
 	defer a.DropCluster(cluster)
 

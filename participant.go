@@ -55,7 +55,7 @@ type Participant struct {
 	state participantState
 
 	// keybuilder
-	keys KeyBuilder
+	keys keyBuilder
 
 	// pre-connect callbacks
 	preConnectCallbacks []func()

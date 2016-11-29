@@ -40,7 +40,7 @@ type Spectator struct {
 	stop chan bool
 
 	// keybuilder
-	keys KeyBuilder
+	keys keyBuilder
 
 	// resources the external view is tracking. It is a map from the resource name to the
 	// current state of the resource: true means it is active, false means the resource is inactive/deleted

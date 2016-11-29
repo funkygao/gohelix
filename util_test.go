@@ -1,30 +1,9 @@
 package gohelix
 
 import (
-	"strings"
 	"testing"
 	"time"
 )
-
-func TestRunCommand(t *testing.T) {
-	t.Parallel()
-
-	if testing.Short() {
-		t.Skip("Skip TestRunCommand")
-	}
-
-	commands := "/usr/bin/whoami"
-
-	output, err := RunCommand(commands)
-	if err != nil {
-		t.Error(err.Error())
-	}
-
-	trimed := strings.TrimSpace(output)
-	if trimed != "vagrant" {
-		t.Error("wrong output: " + trimed + ", expected: vagrant")
-	}
-}
 
 func TestCreateTestCluster(t *testing.T) {
 	t.Parallel()

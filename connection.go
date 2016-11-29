@@ -14,7 +14,7 @@ import (
 var (
 	zkRetryOptions = retry.RetryOptions{
 		"zookeeper",           // tag
-		time.Millisecond * 10, // backoff
+		time.Millisecond * 50, // backoff
 		time.Second * 1,       // max backoff
 		1,                     // default backoff constant
 		0,                     // infinit retry
@@ -25,7 +25,7 @@ var (
 type connection struct {
 	sync.RWMutex
 
-	zkSvr       string
+	servers     []string
 	chroot      string
 	isConnected bool
 
@@ -34,33 +34,47 @@ type connection struct {
 }
 
 func newConnection(zkSvr string) *connection {
+	servers, chroot, err := parseZkConnStr(zkSvr)
+	if err != nil || len(servers) == 0 {
+		// yes, panic!
+		panic("invalid zk connection")
+	}
+
 	conn := connection{
-		zkSvr: zkSvr,
+		servers: servers,
+		chroot:  chroot,
 	}
 
 	return &conn
 }
 
-// TODO chroot
 func (conn *connection) Connect() error {
-	zkServers := strings.Split(strings.TrimSpace(conn.zkSvr), ",")
-	zkConn, _, err := zk.Connect(zkServers, 15*time.Second)
+	zkConn, _, err := zk.Connect(conn.servers, zkSessionTimeout)
 	if err != nil {
 		return err
 	}
 
+	conn.zkConn = zkConn
 	if err = conn.waitUntilConnected(); err != nil {
+		conn.zkConn = nil
 		return err
 	}
 
 	conn.isConnected = true
-	conn.zkConn = zkConn
 
 	return nil
 }
 
+func (conn connection) realPath(path string) string {
+	if conn.chroot == "" {
+		return path
+	}
+
+	return conn.chroot + path
+}
+
 func (conn *connection) waitUntilConnected() error {
-	if _, _, err := zkConn.Exists("/zookeeper"); err != nil {
+	if _, _, err := conn.zkConn.Exists("/zookeeper"); err != nil {
 		return err
 	}
 
@@ -68,17 +82,7 @@ func (conn *connection) waitUntilConnected() error {
 }
 
 func (conn *connection) IsConnected() bool {
-	if conn == nil || conn.isConnected == false {
-		return false
-	}
-
-	if err := conn.waitUntilConnected(); err != nil {
-		conn.isConnected = false
-		return false
-	}
-
-	conn.isConnected = true
-	return true
+	return conn != nil && conn.isConnected
 }
 
 func (conn *connection) GetSessionID() string {
@@ -92,10 +96,6 @@ func (conn *connection) Disconnect() {
 	conn.isConnected = false
 }
 
-func (conn *connection) isClusterSetup(cluster string) bool {
-	return true // TODO
-}
-
 func (conn *connection) CreateEmptyNode(path string) error {
 	return conn.CreateRecordWithData(path, "")
 }
@@ -104,7 +104,7 @@ func (conn *connection) CreateRecordWithData(path string, data string) error {
 	flags := int32(0)
 	acl := zk.WorldACL(zk.PermAll)
 
-	_, err := conn.Create(path, []byte(data), flags, acl)
+	_, err := conn.Create(conn.realPath(path), []byte(data), flags, acl)
 	return err
 }
 
@@ -119,7 +119,7 @@ func (conn *connection) CreateRecordWithPath(p string, r *Record) error {
 
 	flags := int32(0)
 	acl := zk.WorldACL(zk.PermAll)
-	_, err = conn.Create(p, data, flags, acl)
+	_, err = conn.Create(conn.realPath(p), data, flags, acl)
 	return err
 }
 
@@ -128,7 +128,7 @@ func (conn *connection) Exists(path string) (bool, error) {
 	var stat *zk.Stat
 
 	err := retry.RetryWithBackoff(zkRetryOptions, func() (retry.RetryStatus, error) {
-		r, s, err := conn.zkConn.Exists(path)
+		r, s, err := conn.zkConn.Exists(conn.realPath(path))
 		if err != nil {
 			return retry.RetryContinue, nil
 		}
@@ -144,7 +144,6 @@ func (conn *connection) Exists(path string) (bool, error) {
 func (conn *connection) ExistsAll(paths ...string) (bool, error) {
 	for _, path := range paths {
 		if exists, err := conn.Exists(path); err != nil || exists == false {
-			println(path, "not exists")
 			return exists, err
 		}
 	}
@@ -156,7 +155,7 @@ func (conn *connection) Get(path string) ([]byte, error) {
 	var data []byte
 
 	err := retry.RetryWithBackoff(zkRetryOptions, func() (retry.RetryStatus, error) {
-		d, s, err := conn.zkConn.Get(path)
+		d, s, err := conn.zkConn.Get(conn.realPath(path))
 		if err != nil {
 			return retry.RetryContinue, nil
 		}
@@ -173,7 +172,7 @@ func (conn *connection) GetW(path string) ([]byte, <-chan zk.Event, error) {
 	var events <-chan zk.Event
 
 	err := retry.RetryWithBackoff(zkRetryOptions, func() (retry.RetryStatus, error) {
-		d, s, evts, err := conn.zkConn.GetW(path)
+		d, s, evts, err := conn.zkConn.GetW(conn.realPath(path))
 		if err != nil {
 			return retry.RetryContinue, nil
 		}
@@ -187,19 +186,19 @@ func (conn *connection) GetW(path string) ([]byte, <-chan zk.Event, error) {
 }
 
 func (conn *connection) Set(path string, data []byte) error {
-	_, err := conn.zkConn.Set(path, data, conn.stat.Version)
+	_, err := conn.zkConn.Set(conn.realPath(path), data, conn.stat.Version)
 	return err
 }
 
 func (conn *connection) Create(path string, data []byte, flags int32, acl []zk.ACL) (string, error) {
-	return conn.zkConn.Create(path, data, flags, acl)
+	return conn.zkConn.Create(conn.realPath(path), data, flags, acl)
 }
 
 func (conn *connection) Children(path string) ([]string, error) {
 	var children []string
 
 	err := retry.RetryWithBackoff(zkRetryOptions, func() (retry.RetryStatus, error) {
-		c, s, err := conn.zkConn.Children(path)
+		c, s, err := conn.zkConn.Children(conn.realPath(path))
 		if err != nil {
 			return retry.RetryContinue, nil
 		}
@@ -216,7 +215,7 @@ func (conn *connection) ChildrenW(path string) ([]string, <-chan zk.Event, error
 	var eventChan <-chan zk.Event
 
 	err := retry.RetryWithBackoff(zkRetryOptions, func() (retry.RetryStatus, error) {
-		c, s, evts, err := conn.zkConn.ChildrenW(path)
+		c, s, evts, err := conn.zkConn.ChildrenW(conn.realPath(path))
 		if err != nil {
 			return retry.RetryContinue, nil
 		}
@@ -240,7 +239,7 @@ func (conn *connection) ChildrenW(path string) ([]string, <-chan zk.Event, error
 // if we want to set the CURRENT_STATE to ONLINE, we call
 // UpdateMapField("/RELAY/INSTANCES/{instance}/CURRENT_STATE/{sessionID}/{db}", "eat1-app993.stg.linkedin.com_11932,BizProfile,p31_1,SLAVE", "CURRENT_STATE", "ONLINE")
 func (conn *connection) UpdateMapField(path string, key string, property string, value string) error {
-	data, err := conn.Get(path)
+	data, err := conn.Get(path) // Get itself handles chroot
 	if err != nil {
 		return err
 	}
@@ -266,7 +265,6 @@ func (conn *connection) UpdateMapField(path string, key string, property string,
 }
 
 func (conn *connection) UpdateSimpleField(path string, key string, value string) {
-
 	// get the current node
 	data, err := conn.Get(path)
 	must(err)
@@ -311,10 +309,14 @@ func (conn *connection) GetSimpleFieldBool(path string, key string) bool {
 }
 
 func (conn *connection) Delete(path string) error {
-	return conn.zkConn.Delete(path, -1)
+	return conn.zkConn.Delete(conn.realPath(path), -1)
 }
 
 func (conn *connection) DeleteTree(path string) error {
+	return conn.deleteTreeRealPath(conn.realPath(path))
+}
+
+func (conn *connection) deleteTreeRealPath(path string) error {
 	if exists, err := conn.Exists(path); !exists || err != nil {
 		return err
 	}
@@ -364,14 +366,13 @@ func (conn *connection) RemoveMapFieldKey(path string, key string) error {
 }
 
 func (conn *connection) IsClusterSetup(cluster string) (bool, error) {
-	if conn.IsConnected() == false {
+	if !conn.IsConnected() {
 		if err := conn.Connect(); err != nil {
 			return false, err
 		}
 	}
 
-	keys := KeyBuilder{cluster}
-
+	keys := keyBuilder{cluster}
 	return conn.ExistsAll(
 		keys.cluster(),
 		keys.idealStates(),

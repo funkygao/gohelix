@@ -13,7 +13,7 @@ func TestParticipantConnect(t *testing.T) {
 	now := time.Now().Local()
 	cluster := "participant_test_TestParticipantConnect_" + now.Format("20060102150405")
 
-	a := Admin{testZkSvr}
+	a := Admin{zkSvr: testZkSvr}
 	a.AddCluster(cluster)
 	defer a.DropCluster(cluster)
 
@@ -62,7 +62,7 @@ func TestPreConnectedCallback(t *testing.T) {
 	now := time.Now().Local()
 	cluster := "participant_test_TestPreConnectedCallback_" + now.Format("20060102150405")
 
-	a := Admin{testZkSvr}
+	a := Admin{zkSvr: testZkSvr}
 	a.AddCluster(cluster)
 	defer a.DropCluster(cluster)
 

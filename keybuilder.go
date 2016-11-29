@@ -4,143 +4,143 @@ import (
 	"fmt"
 )
 
-// KeyBuilder geenrate a Zookeeper path
-type KeyBuilder struct {
+// keyBuilder geenrate a Zookeeper path
+type keyBuilder struct {
 	ClusterID string
 }
 
-func (k *KeyBuilder) cluster() string {
+func (k *keyBuilder) cluster() string {
 	return fmt.Sprintf("/%s", k.ClusterID)
 }
 
-func (k *KeyBuilder) configs() string {
+func (k *keyBuilder) configs() string {
 	return fmt.Sprintf("/%s/CONFIGS", k.ClusterID)
 }
 
-func (k *KeyBuilder) clusterConfigs() string {
+func (k *keyBuilder) clusterConfigs() string {
 	return fmt.Sprintf("/%s/CONFIGS/CLUSTER", k.ClusterID)
 }
 
-func (k *KeyBuilder) clusterConfig() string {
+func (k *keyBuilder) clusterConfig() string {
 	return fmt.Sprintf("/%s/CONFIGS/CLUSTER/%s", k.ClusterID, k.ClusterID)
 }
 
-func (k *KeyBuilder) externalView() string {
+func (k *keyBuilder) externalView() string {
 	return fmt.Sprintf("/%s/EXTERNALVIEW", k.ClusterID)
 }
 
-func (k *KeyBuilder) externalViewForResource(resource string) string {
+func (k *keyBuilder) externalViewForResource(resource string) string {
 	return fmt.Sprintf("/%s/EXTERNALVIEW/%s", k.ClusterID, resource)
 }
 
-func (k *KeyBuilder) propertyStore() string {
+func (k *keyBuilder) propertyStore() string {
 	return fmt.Sprintf("/%s/PROPERTYSTORE", k.ClusterID)
 }
 
-func (k *KeyBuilder) controller() string {
+func (k *keyBuilder) controller() string {
 	return fmt.Sprintf("/%s/CONTROLLER", k.ClusterID)
 }
 
-func (k *KeyBuilder) controllerErrors() string {
+func (k *keyBuilder) controllerErrors() string {
 	return fmt.Sprintf("/%s/CONTROLLER/ERRORS", k.ClusterID)
 }
 
-func (k *KeyBuilder) controllerHistory() string {
+func (k *keyBuilder) controllerHistory() string {
 	return fmt.Sprintf("/%s/CONTROLLER/HISTORY", k.ClusterID)
 }
 
-func (k *KeyBuilder) controllerMessages() string {
+func (k *keyBuilder) controllerMessages() string {
 	return fmt.Sprintf("/%s/CONTROLLER/MESSAGES", k.ClusterID)
 }
 
-func (k *KeyBuilder) controllerMessage(ID string) string {
+func (k *keyBuilder) controllerMessage(ID string) string {
 	return fmt.Sprintf("/%s/CONTROLLER/MESSAGES/%s", k.ClusterID, ID)
 }
 
-func (k *KeyBuilder) controllerStatusUpdates() string {
+func (k *keyBuilder) controllerStatusUpdates() string {
 	return fmt.Sprintf("/%s/CONTROLLER/STATUSUPDATES", k.ClusterID)
 }
 
-func (k *KeyBuilder) idealStates() string {
+func (k *keyBuilder) idealStates() string {
 	return fmt.Sprintf("/%s/IDEALSTATES", k.ClusterID)
 }
 
-func (k *KeyBuilder) idealStateForResource(resource string) string {
+func (k *keyBuilder) idealStateForResource(resource string) string {
 	return fmt.Sprintf("/%s/IDEALSTATES/%s", k.ClusterID, resource)
 }
 
-func (k *KeyBuilder) resourceConfigs() string {
+func (k *keyBuilder) resourceConfigs() string {
 	return fmt.Sprintf("/%s/CONFIGS/RESOURCE", k.ClusterID)
 }
 
-func (k *KeyBuilder) resourceConfig(resource string) string {
+func (k *keyBuilder) resourceConfig(resource string) string {
 	return fmt.Sprintf("/%s/CONFIGS/RESOURCE/%s", k.ClusterID, resource)
 }
 
-func (k *KeyBuilder) participantConfigs() string {
+func (k *keyBuilder) participantConfigs() string {
 	return fmt.Sprintf("/%s/CONFIGS/PARTICIPANT", k.ClusterID)
 }
 
-func (k *KeyBuilder) participantConfig(participantID string) string {
+func (k *keyBuilder) participantConfig(participantID string) string {
 	return fmt.Sprintf("/%s/CONFIGS/PARTICIPANT/%s", k.ClusterID, participantID)
 }
 
-func (k *KeyBuilder) liveInstances() string {
+func (k *keyBuilder) liveInstances() string {
 	return fmt.Sprintf("/%s/LIVEINSTANCES", k.ClusterID)
 }
 
-func (k *KeyBuilder) instances() string {
+func (k *keyBuilder) instances() string {
 	return fmt.Sprintf("/%s/INSTANCES", k.ClusterID)
 }
 
-func (k *KeyBuilder) instance(participantID string) string {
+func (k *keyBuilder) instance(participantID string) string {
 	return fmt.Sprintf("/%s/INSTANCES/%s", k.ClusterID, participantID)
 }
 
-func (k *KeyBuilder) liveInstance(partipantID string) string {
+func (k *keyBuilder) liveInstance(partipantID string) string {
 	return fmt.Sprintf("/%s/LIVEINSTANCES/%s", k.ClusterID, partipantID)
 }
 
-func (k *KeyBuilder) currentStates(participantID string) string {
+func (k *keyBuilder) currentStates(participantID string) string {
 	return fmt.Sprintf("/%s/INSTANCES/%s/CURRENTSTATES", k.ClusterID, participantID)
 }
 
-func (k *KeyBuilder) currentStatesForSession(participantID string, sessionID string) string {
+func (k *keyBuilder) currentStatesForSession(participantID string, sessionID string) string {
 	return fmt.Sprintf("/%s/INSTANCES/%s/CURRENTSTATES/%s", k.ClusterID, participantID, sessionID)
 }
 
-func (k *KeyBuilder) currentStateForResource(participantID string, sessionID string, resourceID string) string {
+func (k *keyBuilder) currentStateForResource(participantID string, sessionID string, resourceID string) string {
 	return fmt.Sprintf("/%s/INSTANCES/%s/CURRENTSTATES/%s/%s", k.ClusterID, participantID, sessionID, resourceID)
 }
 
-func (k *KeyBuilder) errorsR(participantID string) string {
+func (k *keyBuilder) errorsR(participantID string) string {
 	return fmt.Sprintf("/%s/INSTANCES/%s/ERRORS", k.ClusterID, participantID)
 }
 
-func (k *KeyBuilder) errors(participantID string, sessionID string, resourceID string) string {
+func (k *keyBuilder) errors(participantID string, sessionID string, resourceID string) string {
 	return fmt.Sprintf("/%s/INSTANCES/%s/ERRORS/%s/%s", k.ClusterID, participantID, sessionID, resourceID)
 }
 
-func (k *KeyBuilder) healthReport(participantID string) string {
+func (k *keyBuilder) healthReport(participantID string) string {
 	return fmt.Sprintf("/%s/INSTANCES/%s/HEALTHREPORT", k.ClusterID, participantID)
 }
 
-func (k *KeyBuilder) statusUpdates(participantID string) string {
+func (k *keyBuilder) statusUpdates(participantID string) string {
 	return fmt.Sprintf("/%s/INSTANCES/%s/STATUSUPDATES", k.ClusterID, participantID)
 }
 
-func (k *KeyBuilder) stateModels() string {
+func (k *keyBuilder) stateModels() string {
 	return fmt.Sprintf("/%s/STATEMODELDEFS", k.ClusterID)
 }
 
-func (k *KeyBuilder) stateModel(resourceID string) string {
+func (k *keyBuilder) stateModel(resourceID string) string {
 	return fmt.Sprintf("/%s/STATEMODELDEFS/%s", k.ClusterID, resourceID)
 }
 
-func (k *KeyBuilder) messages(participantID string) string {
+func (k *keyBuilder) messages(participantID string) string {
 	return fmt.Sprintf("/%s/INSTANCES/%s/MESSAGES", k.ClusterID, participantID)
 }
 
-func (k *KeyBuilder) message(participantID string, messageID string) string {
+func (k *keyBuilder) message(participantID string, messageID string) string {
 	return fmt.Sprintf("/%s/INSTANCES/%s/MESSAGES/%s", k.ClusterID, participantID, messageID)
 }

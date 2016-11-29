@@ -125,3 +125,13 @@ func must(err error) {
 		panic(err)
 	}
 }
+
+func strSliceContains(a []string, s string) bool {
+	for _, ele := range a {
+		if ele == s {
+			return true
+		}
+	}
+
+	return false
+}

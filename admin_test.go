@@ -21,7 +21,7 @@ func TestAddAndDropCluster(t *testing.T) {
 	now := time.Now().Local()
 	cluster := "AdminTest_TestAddAndDropCluster_" + now.Format("20060102150405")
 
-	a := Admin{testZkSvr}
+	a := Admin{zkSvr: testZkSvr}
 	err := a.AddCluster(cluster)
 	if err != nil {
 		t.Error(err)
@@ -33,13 +33,19 @@ func TestAddAndDropCluster(t *testing.T) {
 		t.Error(err)
 	}
 
-	//listClusters
-	if info, err := a.ListClusters(); err != nil || !strings.Contains(info, cluster) {
+	// listClusters
+	clusters, err := a.ListClusters()
+	t.Logf("%+v%+v", clusters, err)
+	if err != nil {
+		t.Error("Expect OK")
+	}
+	if !strSliceContains(clusters, cluster) {
 		t.Error("Expect OK")
 	}
 
 	a.DropCluster(cluster)
-	if info, err := a.ListClusters(); err != nil || strings.Contains(info, cluster) {
+	clusters, err = a.ListClusters()
+	if err != nil || strSliceContains(clusters, cluster) {
 		t.Error("Expect dropped")
 	}
 }
@@ -50,7 +56,7 @@ func TestAddCluster(t *testing.T) {
 	now := time.Now().Local()
 	cluster := "AdminTest_TestAddCluster" + now.Format("20060102150405")
 
-	a := Admin{testZkSvr}
+	a := Admin{zkSvr: testZkSvr}
 	err := a.AddCluster(cluster)
 	if err == nil {
 		defer a.DropCluster(cluster)
@@ -92,7 +98,7 @@ func TestSetConfig(t *testing.T) {
 	now := time.Now().Local()
 	cluster := "AdminTest_TestSetConfig_" + now.Format("20060102150405")
 
-	a := Admin{testZkSvr}
+	a := Admin{zkSvr: testZkSvr}
 	err := a.AddCluster(cluster)
 	if err == nil {
 		defer a.DropCluster(cluster)
@@ -118,7 +124,7 @@ func TestAddDropNode(t *testing.T) {
 	now := time.Now().Local()
 	cluster := "AdminTest_TestAddDropNode_" + now.Format("20060102150405")
 
-	a := Admin{testZkSvr}
+	a := Admin{zkSvr: testZkSvr}
 	node := "localhost_19932"
 
 	// add node before adding cluster, expect fail
@@ -170,7 +176,7 @@ func TestAddDropResource(t *testing.T) {
 	cluster := "AdminTest_TestAddResource_" + now.Format("20060102150405")
 	resource := "resource"
 
-	a := Admin{testZkSvr}
+	a := Admin{zkSvr: testZkSvr}
 
 	// expect error if cluster not setup
 	if err := a.AddResource(cluster, resource, 32, "MasterSlave"); err != ErrClusterNotSetup {
@@ -204,7 +210,7 @@ func TestAddDropResource(t *testing.T) {
 		t.Error("expect OK")
 	}
 
-	kb := KeyBuilder{cluster}
+	kb := keyBuilder{cluster}
 	isPath := kb.idealStates() + "/resource"
 	verifyNodeExist(t, isPath)
 
@@ -222,7 +228,7 @@ func TestEnableDisableResource(t *testing.T) {
 	cluster := "AdminTest_TestEnableDisableResource_" + now.Format("20060102150405")
 	resource := "resource"
 
-	a := Admin{testZkSvr}
+	a := Admin{zkSvr: testZkSvr}
 
 	// expect error if cluster not setup
 	if err := a.EnableResource(cluster, resource); err != ErrClusterNotSetup {
@@ -250,7 +256,7 @@ func TestEnableDisableResource(t *testing.T) {
 		t.Error("expect OK")
 	}
 
-	kb := KeyBuilder{cluster}
+	kb := keyBuilder{cluster}
 	path := kb.idealStates() + "/resource"
 
 	conn := newConnection(testZkSvr)

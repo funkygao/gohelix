@@ -27,11 +27,15 @@ func (adm *Admin) Connect() error {
 		return err
 	}
 
+	adm.connected = true
 	return nil
 }
 
-func (adm Admin) Clusters() ([]string, error) {
-
+func (adm *Admin) Disconnect() {
+	if adm.connected {
+		adm.conn.Disconnect()
+		adm.connected = false
+	}
 }
 
 // AddCluster add a cluster to Helix. As a result, a znode will be created in zookeeper
@@ -44,8 +48,9 @@ func (adm Admin) AddCluster(cluster string) error {
 	}
 	defer conn.Disconnect()
 
-	kb := KeyBuilder{ClusterID: cluster}
+	kb := keyBuilder{ClusterID: cluster}
 
+	// avoid dup cluster
 	exists, err := conn.Exists(kb.cluster())
 	if err != nil {
 		return err
@@ -90,13 +95,12 @@ func (adm Admin) AddCluster(cluster string) error {
 // znode named after the cluster name from the zookeeper root.
 func (adm Admin) DropCluster(cluster string) error {
 	conn := newConnection(adm.zkSvr)
-	err := conn.Connect()
-	if err != nil {
+	if err := conn.Connect(); err != nil {
 		return err
 	}
 	defer conn.Disconnect()
 
-	kb := KeyBuilder{ClusterID: cluster}
+	kb := keyBuilder{ClusterID: cluster}
 	return conn.DeleteTree(kb.cluster())
 }
 
@@ -108,6 +112,71 @@ func (adm Admin) AllowParticipantAutoJoin(cluster string, yes bool) error {
 		properties["allowParticipantAutoJoin"] = "true"
 	}
 	return adm.SetConfig(cluster, "CLUSTER", properties)
+}
+
+// ListClusterInfo shows the existing resources and instances in the glaster
+func (adm Admin) ListClusterInfo(cluster string) (string, error) {
+	conn := newConnection(adm.zkSvr)
+	err := conn.Connect()
+	if err != nil {
+		return "", err
+	}
+	defer conn.Disconnect()
+
+	// make sure the cluster is already setup
+	if ok, err := conn.IsClusterSetup(cluster); !ok || err != nil {
+		return "", ErrClusterNotSetup
+	}
+
+	keys := keyBuilder{cluster}
+	isPath := keys.idealStates()
+	instancesPath := keys.instances()
+
+	resources, err := conn.Children(isPath)
+	if err != nil {
+		return "", err
+	}
+
+	instances, err := conn.Children(instancesPath)
+	if err != nil {
+		return "", err
+	}
+
+	var buffer bytes.Buffer
+	buffer.WriteString("Existing resources in cluster " + cluster + ":\n")
+
+	for _, r := range resources {
+		buffer.WriteString("  " + r + "\n")
+	}
+
+	buffer.WriteString("\nInstances in cluster " + cluster + ":\n")
+	for _, i := range instances {
+		buffer.WriteString("  " + i + "\n")
+	}
+	return buffer.String(), nil
+}
+
+// ListClusters shows all Helix managed clusters in the connected zookeeper cluster
+func (adm Admin) ListClusters() ([]string, error) {
+	conn := newConnection(adm.zkSvr)
+	if err := conn.Connect(); err != nil {
+		return nil, err
+	}
+	defer conn.Disconnect()
+
+	children, err := conn.Children("/")
+	if err != nil {
+		return nil, err
+	}
+
+	var clusters []string
+	for _, cluster := range children {
+		if ok, err := conn.IsClusterSetup(cluster); ok && err == nil {
+			clusters = append(clusters, cluster)
+		}
+	}
+
+	return clusters, nil
 }
 
 // SetConfig set the configuration values for the cluster, defined by the config scope
@@ -122,7 +191,7 @@ func (adm Admin) SetConfig(cluster string, scope string, properties map[string]s
 	switch strings.ToUpper(scope) {
 	case "CLUSTER":
 		if allow, ok := properties["allowParticipantAutoJoin"]; ok {
-			keys := KeyBuilder{cluster}
+			keys := keyBuilder{cluster}
 			path := keys.clusterConfig()
 
 			if strings.ToLower(allow) == "true" {
@@ -151,7 +220,7 @@ func (adm Admin) GetConfig(cluster string, scope string, keys []string) map[stri
 
 	switch scope {
 	case "CLUSTER":
-		kb := KeyBuilder{cluster}
+		kb := keyBuilder{cluster}
 		path := kb.clusterConfig()
 
 		for _, k := range keys {
@@ -186,7 +255,7 @@ func (adm Admin) AddNode(cluster string, node string) error {
 	}
 
 	// check if node already exists under /<cluster>/CONFIGS/PARTICIPANT/<NODE>
-	kb := KeyBuilder{ClusterID: cluster}
+	kb := keyBuilder{ClusterID: cluster}
 	path := kb.participantConfig(node)
 	exists, err := conn.Exists(path)
 	if err != nil {
@@ -223,7 +292,7 @@ func (adm Admin) DropNode(cluster string, node string) error {
 	defer conn.Disconnect()
 
 	// check if node already exists under /<cluster>/CONFIGS/PARTICIPANT/<node>
-	keys := KeyBuilder{cluster}
+	keys := keyBuilder{cluster}
 	if exists, err := conn.Exists(keys.participantConfig(node)); !exists || err != nil {
 		return ErrNodeNotExist
 	}
@@ -257,7 +326,7 @@ func (adm Admin) AddResource(cluster string, resource string, partitions int, st
 		return ErrClusterNotSetup
 	}
 
-	keys := KeyBuilder{ClusterID: cluster}
+	keys := keyBuilder{ClusterID: cluster}
 
 	// make sure the state model def exists
 	if exists, err := conn.Exists(keys.stateModel(stateModel)); !exists || err != nil {
@@ -306,7 +375,7 @@ func (adm Admin) DropResource(cluster string, resource string) error {
 		return ErrClusterNotSetup
 	}
 
-	keys := KeyBuilder{cluster}
+	keys := keyBuilder{cluster}
 
 	// make sure the path for the ideal state does not exit
 	conn.DeleteTree(keys.idealStates() + "/" + resource)
@@ -329,7 +398,7 @@ func (adm Admin) EnableResource(cluster string, resource string) error {
 		return ErrClusterNotSetup
 	}
 
-	keys := KeyBuilder{cluster}
+	keys := keyBuilder{cluster}
 
 	isPath := keys.idealStates() + "/" + resource
 
@@ -359,7 +428,7 @@ func (adm Admin) DisableResource(cluster string, resource string) error {
 		return ErrClusterNotSetup
 	}
 
-	keys := KeyBuilder{cluster}
+	keys := keyBuilder{cluster}
 
 	isPath := keys.idealStates() + "/" + resource
 
@@ -389,80 +458,6 @@ func (adm Admin) Rebalance(cluster string, resource string, replicationFactor in
 	fmt.Println("Not implemented")
 }
 
-// ListClusterInfo shows the existing resources and instances in the glaster
-func (adm Admin) ListClusterInfo(cluster string) (string, error) {
-	conn := newConnection(adm.zkSvr)
-	err := conn.Connect()
-	if err != nil {
-		return "", err
-	}
-	defer conn.Disconnect()
-
-	// make sure the cluster is already setup
-	if ok, err := conn.IsClusterSetup(cluster); !ok || err != nil {
-		return "", ErrClusterNotSetup
-	}
-
-	keys := KeyBuilder{cluster}
-	isPath := keys.idealStates()
-	instancesPath := keys.instances()
-
-	resources, err := conn.Children(isPath)
-	if err != nil {
-		return "", err
-	}
-
-	instances, err := conn.Children(instancesPath)
-	if err != nil {
-		return "", err
-	}
-
-	var buffer bytes.Buffer
-	buffer.WriteString("Existing resources in cluster " + cluster + ":\n")
-
-	for _, r := range resources {
-		buffer.WriteString("  " + r + "\n")
-	}
-
-	buffer.WriteString("\nInstances in cluster " + cluster + ":\n")
-	for _, i := range instances {
-		buffer.WriteString("  " + i + "\n")
-	}
-	return buffer.String(), nil
-}
-
-// ListClusters shows all Helix managed clusters in the connected zookeeper cluster
-func (adm Admin) ListClusters() (string, error) {
-	conn := newConnection(adm.zkSvr)
-	err := conn.Connect()
-	if err != nil {
-		fmt.Println("Failed to connect to zookeeper.")
-		return "", err
-	}
-	defer conn.Disconnect()
-
-	var clusters []string
-
-	children, err := conn.Children("/")
-	if err != nil {
-		return "", err
-	}
-
-	for _, cluster := range children {
-		if ok, err := conn.IsClusterSetup(cluster); ok && err == nil {
-			clusters = append(clusters, cluster)
-		}
-	}
-
-	var buffer bytes.Buffer
-	buffer.WriteString("Existing clusters: \n")
-
-	for _, cluster := range clusters {
-		buffer.WriteString("  " + cluster + "\n")
-	}
-	return buffer.String(), nil
-}
-
 // ListResources shows a list of resources managed by the helix cluster
 func (adm Admin) ListResources(cluster string) (string, error) {
 	conn := newConnection(adm.zkSvr)
@@ -477,7 +472,7 @@ func (adm Admin) ListResources(cluster string) (string, error) {
 		return "", ErrClusterNotSetup
 	}
 
-	keys := KeyBuilder{cluster}
+	keys := keyBuilder{cluster}
 	isPath := keys.idealStates()
 	resources, err := conn.Children(isPath)
 	if err != nil {
@@ -508,7 +503,7 @@ func (adm Admin) ListInstances(cluster string) (string, error) {
 		return "", ErrClusterNotSetup
 	}
 
-	keys := KeyBuilder{cluster}
+	keys := keyBuilder{cluster}
 	isPath := keys.instances()
 	instances, err := conn.Children(isPath)
 	if err != nil {
@@ -539,7 +534,7 @@ func (adm Admin) ListInstanceInfo(cluster string, instance string) (string, erro
 		return "", ErrClusterNotSetup
 	}
 
-	keys := KeyBuilder{cluster}
+	keys := keyBuilder{cluster}
 	instanceCfg := keys.participantConfig(instance)
 
 	if exists, err := conn.Exists(instanceCfg); !exists || err != nil {
@@ -565,7 +560,7 @@ func (adm Admin) GetInstances(cluster string) ([]string, error) {
 	}
 	defer conn.Disconnect()
 
-	kb := KeyBuilder{cluster}
+	kb := keyBuilder{cluster}
 	return conn.Children(kb.instances())
 }
 
@@ -577,7 +572,7 @@ func (adm Admin) DropInstance(zkSvr string, cluster string, instance string) err
 	}
 	defer conn.Disconnect()
 
-	kb := KeyBuilder{cluster}
+	kb := keyBuilder{cluster}
 	instanceKey := kb.instance(instance)
 	return conn.Delete(instanceKey)
 }

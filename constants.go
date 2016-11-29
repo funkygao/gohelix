@@ -1,6 +1,12 @@
 package gohelix
 
+import (
+	"time"
+)
+
 const (
+	zkSessionTimeout = time.Second * 20
+
 	StateModelLeaderStandby      = "LeaderStandby"
 	StateModelMasterSlave        = "MasterSlave"
 	StateModelOnlineOffline      = "OnlineOffline"

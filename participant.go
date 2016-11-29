@@ -55,7 +55,7 @@ type Participant struct {
 	state participantState
 
 	// keybuilder
-	keys keyBuilder
+	kb keyBuilder
 
 	// pre-connect callbacks
 	preConnectCallbacks []func()
@@ -111,7 +111,7 @@ func (p *Participant) Connect() error {
 }
 
 func (p *Participant) cleanUp() {
-	currentStatePath := p.keys.currentStates(p.ParticipantID)
+	currentStatePath := p.kb.currentStates(p.ParticipantID)
 
 	sessions, err := p.conn.Children(currentStatePath)
 	must(err)
@@ -166,7 +166,7 @@ func (p *Participant) AddPreConnectCallback(callback func()) {
 }
 
 func (p *Participant) autoJoinAllowed() bool {
-	key := p.keys.clusterConfig()
+	key := p.kb.clusterConfig()
 	config, err := p.conn.Get(key)
 	must(err)
 
@@ -187,7 +187,7 @@ func (p *Participant) autoJoinAllowed() bool {
 
 func (p *Participant) ensureParticipantConfig() bool {
 	// make sure the participant confis exists in zookeeper
-	key := p.keys.participantConfig(p.ParticipantID)
+	key := p.kb.participantConfig(p.ParticipantID)
 	exists, err := p.conn.Exists(key)
 	must(err)
 
@@ -203,24 +203,24 @@ func (p *Participant) ensureParticipantConfig() bool {
 
 		p.conn.CreateRecordWithPath(key, participant)
 
-		instance := p.keys.instance(p.ParticipantID)
+		instance := p.kb.instance(p.ParticipantID)
 		p.conn.CreateEmptyNode(instance)
 
-		currentstates := p.keys.currentStates(p.ParticipantID)
+		currentstates := p.kb.currentStates(p.ParticipantID)
 		p.conn.CreateEmptyNode(currentstates)
 
-		// errs := p.keys.errors(p.ParticipantID, strconv.FormatInt(p.zkConn.SessionID, 10), "")
+		// errs := p.kb.errors(p.ParticipantID, strconv.FormatInt(p.zkConn.SessionID, 10), "")
 		// createEmptyNode(p.zkConn, errs)
-		errs := p.keys.errorsR(p.ParticipantID)
+		errs := p.kb.errorsR(p.ParticipantID)
 		p.conn.CreateEmptyNode(errs)
 
-		health := p.keys.healthReport(p.ParticipantID)
+		health := p.kb.healthReport(p.ParticipantID)
 		p.conn.CreateEmptyNode(health)
 
-		messages := p.keys.messages(p.ParticipantID)
+		messages := p.kb.messages(p.ParticipantID)
 		p.conn.CreateEmptyNode(messages)
 
-		updates := p.keys.statusUpdates(p.ParticipantID)
+		updates := p.kb.statusUpdates(p.ParticipantID)
 		p.conn.CreateEmptyNode(updates)
 	} else if !exists {
 		return false
@@ -264,7 +264,7 @@ func (p *Participant) ensureParticipantConfig() bool {
 func (p *Participant) processMessage(msgID string) {
 	fmt.Println("Process message: " + msgID)
 
-	msgPath := p.keys.message(p.ParticipantID, msgID)
+	msgPath := p.kb.message(p.ParticipantID, msgID)
 	message, err := p.conn.GetRecordFromPath(msgPath)
 	must(err)
 
@@ -327,7 +327,7 @@ func (p *Participant) processMessage(msgID string) {
 		}
 
 		// save to zookeeper
-		path := p.keys.currentStateForResource(p.ParticipantID, sessionID, resourceID)
+		path := p.kb.currentStateForResource(p.ParticipantID, sessionID, resourceID)
 
 		// let's only set the current state if it is empty
 		if exists, _ := p.conn.Exists(path); !exists {
@@ -383,13 +383,13 @@ func (p *Participant) postHandleMessage(message *Record) {
 	// In the state model it will be stayed as OFFLINE, which is OK.
 
 	if strings.ToUpper(toState) == "DROPPED" {
-		path := p.keys.currentStatesForSession(p.ParticipantID, sessionID)
+		path := p.kb.currentStatesForSession(p.ParticipantID, sessionID)
 		p.conn.RemoveMapFieldKey(path, partitionName)
 	}
 
 	// actually set the current state
 	resourceID := message.GetSimpleField("RESOURCE_NAME").(string)
-	currentStateForResourcePath := p.keys.currentStateForResource(p.ParticipantID, p.conn.GetSessionID(), resourceID)
+	currentStateForResourcePath := p.kb.currentStateForResource(p.ParticipantID, p.conn.GetSessionID(), resourceID)
 
 	err := p.conn.UpdateMapField(currentStateForResourcePath, partitionName, "CURRENT_STATE", toState)
 	must(err)
@@ -398,7 +398,7 @@ func (p *Participant) postHandleMessage(message *Record) {
 func (p *Participant) watchMessages() (chan []string, chan error) {
 	snapshots := make(chan []string)
 	errors := make(chan error)
-	path := p.keys.messages(p.ParticipantID)
+	path := p.kb.messages(p.ParticipantID)
 
 	go func() {
 		for {
@@ -468,7 +468,7 @@ func (p *Participant) startEventLoop() {
 }
 
 func (p *Participant) createLiveInstance() {
-	path := p.keys.liveInstance(p.ParticipantID)
+	path := p.kb.liveInstance(p.ParticipantID)
 	node := NewLiveInstanceNode(p.ParticipantID, p.conn.GetSessionID())
 	data, err := json.MarshalIndent(*node, "", "  ")
 	flags := int32(zk.FlagEphemeral)

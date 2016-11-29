@@ -60,7 +60,7 @@ func (m *HelixManager) NewSpectator(clusterID string) *Spectator {
 	return &Spectator{
 		ClusterID: clusterID,
 		zkConnStr: m.zkAddress,
-		keys:      keyBuilder{clusterID},
+		kb:        keyBuilder{clusterID: clusterID},
 
 		// listeners
 		externalViewListeners:       []ExternalViewChangeListener{},
@@ -96,6 +96,6 @@ func (m *HelixManager) NewParticipant(clusterID string, host string, port string
 		started:       make(chan interface{}),
 		stop:          make(chan bool),
 		stopWatch:     make(chan bool),
-		keys:          keyBuilder{clusterID: clusterID},
+		kb:            keyBuilder{clusterID: clusterID},
 	}
 }

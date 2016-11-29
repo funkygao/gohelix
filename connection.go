@@ -372,21 +372,21 @@ func (conn *connection) IsClusterSetup(cluster string) (bool, error) {
 		}
 	}
 
-	keys := keyBuilder{cluster}
+	kb := keyBuilder{clusterID: cluster}
 	return conn.ExistsAll(
-		keys.cluster(),
-		keys.idealStates(),
-		keys.participantConfigs(),
-		keys.propertyStore(),
-		keys.liveInstances(),
-		keys.instances(),
-		keys.externalView(),
-		keys.stateModels(),
-		keys.controller(),
-		keys.controllerErrors(),
-		keys.controllerHistory(),
-		keys.controllerMessages(),
-		keys.controllerStatusUpdates(),
+		kb.cluster(),
+		kb.idealStates(),
+		kb.participantConfigs(),
+		kb.propertyStore(),
+		kb.liveInstances(),
+		kb.instances(),
+		kb.externalView(),
+		kb.stateModels(),
+		kb.controller(),
+		kb.controllerErrors(),
+		kb.controllerHistory(),
+		kb.controllerMessages(),
+		kb.controllerStatusUpdates(),
 	)
 }
 

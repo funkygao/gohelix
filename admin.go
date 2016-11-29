@@ -188,8 +188,8 @@ func (adm Admin) SetConfig(cluster string, scope string, properties map[string]s
 	switch strings.ToUpper(scope) {
 	case "CLUSTER":
 		if allow, ok := properties["allowParticipantAutoJoin"]; ok {
-			keys := keyBuilder{cluster}
-			path := keys.clusterConfig()
+			kb := keyBuilder{clusterID: cluster}
+			path := kb.clusterConfig()
 
 			if strings.ToLower(allow) == "true" {
 				conn.UpdateSimpleField(path, "allowParticipantAutoJoin", "true")

@@ -40,7 +40,7 @@ type Spectator struct {
 	stop chan bool
 
 	// keybuilder
-	keys keyBuilder
+	kb keyBuilder
 
 	// resources the external view is tracking. It is a map from the resource name to the
 	// current state of the resource: true means it is active, false means the resource is inactive/deleted
@@ -206,7 +206,7 @@ func (s *Spectator) watchExternalViewResource(resource string) {
 			// block and wait for the next update for the resource
 			// when the update happens, unblock, and also send the resource
 			// to the channel
-			_, events, err := s.conn.GetW(s.keys.externalViewForResource(resource))
+			_, events, err := s.conn.GetW(s.kb.externalViewForResource(resource))
 			<-events
 			s.changeNotificationChan <- changeNotification{exteralViewChanged, resource}
 			must(err)
@@ -220,7 +220,7 @@ func (s *Spectator) watchIdealStateResource(resource string) {
 			// block and wait for the next update for the resource
 			// when the update happens, unblock, and also send the resource
 			// to the channel
-			_, events, err := s.conn.GetW(s.keys.idealStateForResource(resource))
+			_, events, err := s.conn.GetW(s.kb.idealStateForResource(resource))
 			<-events
 			s.changeNotificationChan <- changeNotification{idealStateChanged, resource}
 			must(err)
@@ -231,14 +231,14 @@ func (s *Spectator) watchIdealStateResource(resource string) {
 // GetControllerMessages retrieves controller messages from zookeeper
 func (s *Spectator) GetControllerMessages() []*Record {
 	result := []*Record{}
-	messages, err := s.conn.Children(s.keys.controllerMessages())
+	messages, err := s.conn.Children(s.kb.controllerMessages())
 
 	if err != nil {
 		return result
 	}
 
 	for _, m := range messages {
-		record, err := s.conn.GetRecordFromPath(s.keys.controllerMessage(m))
+		record, err := s.conn.GetRecordFromPath(s.kb.controllerMessage(m))
 		if err != nil {
 			result = append(result, record)
 		}
@@ -250,14 +250,14 @@ func (s *Spectator) GetControllerMessages() []*Record {
 // GetInstanceMessages retrieves messages sent to an instance
 func (s *Spectator) GetInstanceMessages(instance string) []*Record {
 	result := []*Record{}
-	messages, err := s.conn.Children(s.keys.messages(instance))
+	messages, err := s.conn.Children(s.kb.messages(instance))
 
 	if err != nil {
 		return result
 	}
 
 	for _, m := range messages {
-		record, err := s.conn.GetRecordFromPath(s.keys.message(instance, m))
+		record, err := s.conn.GetRecordFromPath(s.kb.message(instance, m))
 		if err != nil {
 			result = append(result, record)
 		}
@@ -269,14 +269,14 @@ func (s *Spectator) GetInstanceMessages(instance string) []*Record {
 // GetLiveInstances retrieve a copy of the current live instances.
 func (s *Spectator) GetLiveInstances() []*Record {
 	liveInstances := []*Record{}
-	instances, err := s.conn.Children(s.keys.liveInstances())
+	instances, err := s.conn.Children(s.kb.liveInstances())
 	if err != nil {
 		fmt.Println("Error in GetLiveInstances: " + err.Error())
 		return nil
 	}
 
 	for _, participantID := range instances {
-		r, err := s.conn.GetRecordFromPath(s.keys.liveInstance(participantID))
+		r, err := s.conn.GetRecordFromPath(s.kb.liveInstance(participantID))
 		if err != nil {
 			fmt.Println("Error in get live instance for " + participantID)
 			continue
@@ -297,7 +297,7 @@ func (s *Spectator) GetExternalView() []*Record {
 			continue
 		}
 
-		record, err := s.conn.GetRecordFromPath(s.keys.externalViewForResource(k))
+		record, err := s.conn.GetRecordFromPath(s.kb.externalViewForResource(k))
 
 		if err == nil {
 			result = append(result, record)
@@ -317,7 +317,7 @@ func (s *Spectator) GetIdealState() []*Record {
 			continue
 		}
 
-		record, err := s.conn.GetRecordFromPath(s.keys.idealStateForResource(k))
+		record, err := s.conn.GetRecordFromPath(s.kb.idealStateForResource(k))
 
 		if err == nil {
 			result = append(result, record)
@@ -331,11 +331,11 @@ func (s *Spectator) GetIdealState() []*Record {
 func (s *Spectator) GetCurrentState(instance string) []*Record {
 	result := []*Record{}
 
-	resources, err := s.conn.Children(s.keys.instance(instance))
+	resources, err := s.conn.Children(s.kb.instance(instance))
 	must(err)
 
 	for _, r := range resources {
-		record, err := s.conn.GetRecordFromPath(s.keys.currentStateForResource(instance, s.conn.GetSessionID(), r))
+		record, err := s.conn.GetRecordFromPath(s.kb.currentStateForResource(instance, s.conn.GetSessionID(), r))
 		if err == nil {
 			result = append(result, record)
 		}
@@ -348,11 +348,11 @@ func (s *Spectator) GetCurrentState(instance string) []*Record {
 func (s *Spectator) GetInstanceConfigs() []*Record {
 	result := []*Record{}
 
-	configs, err := s.conn.Children(s.keys.participantConfigs())
+	configs, err := s.conn.Children(s.kb.participantConfigs())
 	must(err)
 
 	for _, i := range configs {
-		record, err := s.conn.GetRecordFromPath(s.keys.participantConfig(i))
+		record, err := s.conn.GetRecordFromPath(s.kb.participantConfig(i))
 		if err == nil {
 			result = append(result, record)
 		}
@@ -368,12 +368,12 @@ func (s *Spectator) watchCurrentStates() {
 }
 
 func (s *Spectator) watchCurrentStateForInstance(instance string) {
-	sessions, err := s.conn.Children(s.keys.currentStates(instance))
+	sessions, err := s.conn.Children(s.kb.currentStates(instance))
 	must(err)
 
 	// TODO: only have one session?
 	if len(sessions) > 0 {
-		resources, err := s.conn.Children(s.keys.currentStatesForSession(instance, sessions[0]))
+		resources, err := s.conn.Children(s.kb.currentStatesForSession(instance, sessions[0]))
 		must(err)
 
 		for _, r := range resources {
@@ -386,7 +386,7 @@ func (s *Spectator) watchCurrentStateOfInstanceForResource(instance string, reso
 	s.Lock()
 	defer s.Unlock()
 
-	watchPath := s.keys.currentStateForResource(instance, sessionID, resource)
+	watchPath := s.kb.currentStateForResource(instance, sessionID, resource)
 	if _, ok := s.stopCurrentStateWatch[watchPath]; !ok {
 		s.stopCurrentStateWatch[watchPath] = make(chan interface{})
 	}
@@ -424,7 +424,7 @@ func (s *Spectator) watchLiveInstances() {
 
 	go func() {
 		for {
-			_, events, err := s.conn.ChildrenW(s.keys.liveInstances())
+			_, events, err := s.conn.ChildrenW(s.kb.liveInstances())
 			if err != nil {
 				errors <- err
 				return
@@ -448,7 +448,7 @@ func (s *Spectator) watchInstanceConfig() {
 
 	go func() {
 		for {
-			configs, events, err := s.conn.ChildrenW(s.keys.participantConfigs())
+			configs, events, err := s.conn.ChildrenW(s.kb.participantConfigs())
 			if err != nil {
 				errors <- err
 				return
@@ -496,7 +496,7 @@ func (s *Spectator) watchInstanceConfigForParticipant(instance string) {
 			// block and wait for the next update for the resource
 			// when the update happens, unblock, and also send the resource
 			// to the channel
-			_, events, err := s.conn.GetW(s.keys.participantConfig(instance))
+			_, events, err := s.conn.GetW(s.kb.participantConfig(instance))
 			<-events
 			s.changeNotificationChan <- changeNotification{instanceConfigChanged, instance}
 			must(err)
@@ -510,7 +510,7 @@ func (s *Spectator) watchIdealState() {
 
 	go func() {
 		for {
-			resources, events, err := s.conn.ChildrenW(s.keys.idealStates())
+			resources, events, err := s.conn.ChildrenW(s.kb.idealStates())
 			if err != nil {
 				errors <- err
 				return
@@ -552,7 +552,7 @@ func (s *Spectator) watchExternalView() {
 
 	go func() {
 		for {
-			resources, events, err := s.conn.ChildrenW(s.keys.externalView())
+			resources, events, err := s.conn.ChildrenW(s.kb.externalView())
 			if err != nil {
 				errors <- err
 				return
@@ -594,7 +594,7 @@ func (s *Spectator) watchExternalView() {
 // doesn't watch the content of the messages.
 func (s *Spectator) watchControllerMessages() {
 	go func() {
-		_, events, err := s.conn.ChildrenW(s.keys.controllerMessages())
+		_, events, err := s.conn.ChildrenW(s.kb.controllerMessages())
 		if err != nil {
 			panic(err)
 		}
@@ -609,7 +609,7 @@ func (s *Spectator) watchControllerMessages() {
 
 func (s *Spectator) watchInstanceMessages(instance string) {
 	go func() {
-		messages, events, err := s.conn.ChildrenW(s.keys.messages(instance))
+		messages, events, err := s.conn.ChildrenW(s.kb.messages(instance))
 		if err != nil {
 			panic(err)
 		}

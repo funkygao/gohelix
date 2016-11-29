@@ -6,141 +6,141 @@ import (
 
 // keyBuilder geenrate a Zookeeper path
 type keyBuilder struct {
-	ClusterID string
+	clusterID string
 }
 
 func (k *keyBuilder) cluster() string {
-	return fmt.Sprintf("/%s", k.ClusterID)
+	return fmt.Sprintf("/%s", k.clusterID)
 }
 
 func (k *keyBuilder) configs() string {
-	return fmt.Sprintf("/%s/CONFIGS", k.ClusterID)
+	return fmt.Sprintf("/%s/CONFIGS", k.clusterID)
 }
 
 func (k *keyBuilder) clusterConfigs() string {
-	return fmt.Sprintf("/%s/CONFIGS/CLUSTER", k.ClusterID)
+	return fmt.Sprintf("/%s/CONFIGS/CLUSTER", k.clusterID)
 }
 
 func (k *keyBuilder) clusterConfig() string {
-	return fmt.Sprintf("/%s/CONFIGS/CLUSTER/%s", k.ClusterID, k.ClusterID)
+	return fmt.Sprintf("/%s/CONFIGS/CLUSTER/%s", k.clusterID, k.clusterID)
 }
 
 func (k *keyBuilder) externalView() string {
-	return fmt.Sprintf("/%s/EXTERNALVIEW", k.ClusterID)
+	return fmt.Sprintf("/%s/EXTERNALVIEW", k.clusterID)
 }
 
 func (k *keyBuilder) externalViewForResource(resource string) string {
-	return fmt.Sprintf("/%s/EXTERNALVIEW/%s", k.ClusterID, resource)
+	return fmt.Sprintf("/%s/EXTERNALVIEW/%s", k.clusterID, resource)
 }
 
 func (k *keyBuilder) propertyStore() string {
-	return fmt.Sprintf("/%s/PROPERTYSTORE", k.ClusterID)
+	return fmt.Sprintf("/%s/PROPERTYSTORE", k.clusterID)
 }
 
 func (k *keyBuilder) controller() string {
-	return fmt.Sprintf("/%s/CONTROLLER", k.ClusterID)
+	return fmt.Sprintf("/%s/CONTROLLER", k.clusterID)
 }
 
 func (k *keyBuilder) controllerErrors() string {
-	return fmt.Sprintf("/%s/CONTROLLER/ERRORS", k.ClusterID)
+	return fmt.Sprintf("/%s/CONTROLLER/ERRORS", k.clusterID)
 }
 
 func (k *keyBuilder) controllerHistory() string {
-	return fmt.Sprintf("/%s/CONTROLLER/HISTORY", k.ClusterID)
+	return fmt.Sprintf("/%s/CONTROLLER/HISTORY", k.clusterID)
 }
 
 func (k *keyBuilder) controllerMessages() string {
-	return fmt.Sprintf("/%s/CONTROLLER/MESSAGES", k.ClusterID)
+	return fmt.Sprintf("/%s/CONTROLLER/MESSAGES", k.clusterID)
 }
 
 func (k *keyBuilder) controllerMessage(ID string) string {
-	return fmt.Sprintf("/%s/CONTROLLER/MESSAGES/%s", k.ClusterID, ID)
+	return fmt.Sprintf("/%s/CONTROLLER/MESSAGES/%s", k.clusterID, ID)
 }
 
 func (k *keyBuilder) controllerStatusUpdates() string {
-	return fmt.Sprintf("/%s/CONTROLLER/STATUSUPDATES", k.ClusterID)
+	return fmt.Sprintf("/%s/CONTROLLER/STATUSUPDATES", k.clusterID)
 }
 
 func (k *keyBuilder) idealStates() string {
-	return fmt.Sprintf("/%s/IDEALSTATES", k.ClusterID)
+	return fmt.Sprintf("/%s/IDEALSTATES", k.clusterID)
 }
 
 func (k *keyBuilder) idealStateForResource(resource string) string {
-	return fmt.Sprintf("/%s/IDEALSTATES/%s", k.ClusterID, resource)
+	return fmt.Sprintf("/%s/IDEALSTATES/%s", k.clusterID, resource)
 }
 
 func (k *keyBuilder) resourceConfigs() string {
-	return fmt.Sprintf("/%s/CONFIGS/RESOURCE", k.ClusterID)
+	return fmt.Sprintf("/%s/CONFIGS/RESOURCE", k.clusterID)
 }
 
 func (k *keyBuilder) resourceConfig(resource string) string {
-	return fmt.Sprintf("/%s/CONFIGS/RESOURCE/%s", k.ClusterID, resource)
+	return fmt.Sprintf("/%s/CONFIGS/RESOURCE/%s", k.clusterID, resource)
 }
 
 func (k *keyBuilder) participantConfigs() string {
-	return fmt.Sprintf("/%s/CONFIGS/PARTICIPANT", k.ClusterID)
+	return fmt.Sprintf("/%s/CONFIGS/PARTICIPANT", k.clusterID)
 }
 
 func (k *keyBuilder) participantConfig(participantID string) string {
-	return fmt.Sprintf("/%s/CONFIGS/PARTICIPANT/%s", k.ClusterID, participantID)
+	return fmt.Sprintf("/%s/CONFIGS/PARTICIPANT/%s", k.clusterID, participantID)
 }
 
 func (k *keyBuilder) liveInstances() string {
-	return fmt.Sprintf("/%s/LIVEINSTANCES", k.ClusterID)
+	return fmt.Sprintf("/%s/LIVEINSTANCES", k.clusterID)
 }
 
 func (k *keyBuilder) instances() string {
-	return fmt.Sprintf("/%s/INSTANCES", k.ClusterID)
+	return fmt.Sprintf("/%s/INSTANCES", k.clusterID)
 }
 
 func (k *keyBuilder) instance(participantID string) string {
-	return fmt.Sprintf("/%s/INSTANCES/%s", k.ClusterID, participantID)
+	return fmt.Sprintf("/%s/INSTANCES/%s", k.clusterID, participantID)
 }
 
 func (k *keyBuilder) liveInstance(partipantID string) string {
-	return fmt.Sprintf("/%s/LIVEINSTANCES/%s", k.ClusterID, partipantID)
+	return fmt.Sprintf("/%s/LIVEINSTANCES/%s", k.clusterID, partipantID)
 }
 
 func (k *keyBuilder) currentStates(participantID string) string {
-	return fmt.Sprintf("/%s/INSTANCES/%s/CURRENTSTATES", k.ClusterID, participantID)
+	return fmt.Sprintf("/%s/INSTANCES/%s/CURRENTSTATES", k.clusterID, participantID)
 }
 
 func (k *keyBuilder) currentStatesForSession(participantID string, sessionID string) string {
-	return fmt.Sprintf("/%s/INSTANCES/%s/CURRENTSTATES/%s", k.ClusterID, participantID, sessionID)
+	return fmt.Sprintf("/%s/INSTANCES/%s/CURRENTSTATES/%s", k.clusterID, participantID, sessionID)
 }
 
 func (k *keyBuilder) currentStateForResource(participantID string, sessionID string, resourceID string) string {
-	return fmt.Sprintf("/%s/INSTANCES/%s/CURRENTSTATES/%s/%s", k.ClusterID, participantID, sessionID, resourceID)
+	return fmt.Sprintf("/%s/INSTANCES/%s/CURRENTSTATES/%s/%s", k.clusterID, participantID, sessionID, resourceID)
 }
 
 func (k *keyBuilder) errorsR(participantID string) string {
-	return fmt.Sprintf("/%s/INSTANCES/%s/ERRORS", k.ClusterID, participantID)
+	return fmt.Sprintf("/%s/INSTANCES/%s/ERRORS", k.clusterID, participantID)
 }
 
 func (k *keyBuilder) errors(participantID string, sessionID string, resourceID string) string {
-	return fmt.Sprintf("/%s/INSTANCES/%s/ERRORS/%s/%s", k.ClusterID, participantID, sessionID, resourceID)
+	return fmt.Sprintf("/%s/INSTANCES/%s/ERRORS/%s/%s", k.clusterID, participantID, sessionID, resourceID)
 }
 
 func (k *keyBuilder) healthReport(participantID string) string {
-	return fmt.Sprintf("/%s/INSTANCES/%s/HEALTHREPORT", k.ClusterID, participantID)
+	return fmt.Sprintf("/%s/INSTANCES/%s/HEALTHREPORT", k.clusterID, participantID)
 }
 
 func (k *keyBuilder) statusUpdates(participantID string) string {
-	return fmt.Sprintf("/%s/INSTANCES/%s/STATUSUPDATES", k.ClusterID, participantID)
+	return fmt.Sprintf("/%s/INSTANCES/%s/STATUSUPDATES", k.clusterID, participantID)
 }
 
 func (k *keyBuilder) stateModels() string {
-	return fmt.Sprintf("/%s/STATEMODELDEFS", k.ClusterID)
+	return fmt.Sprintf("/%s/STATEMODELDEFS", k.clusterID)
 }
 
 func (k *keyBuilder) stateModel(resourceID string) string {
-	return fmt.Sprintf("/%s/STATEMODELDEFS/%s", k.ClusterID, resourceID)
+	return fmt.Sprintf("/%s/STATEMODELDEFS/%s", k.clusterID, resourceID)
 }
 
 func (k *keyBuilder) messages(participantID string) string {
-	return fmt.Sprintf("/%s/INSTANCES/%s/MESSAGES", k.ClusterID, participantID)
+	return fmt.Sprintf("/%s/INSTANCES/%s/MESSAGES", k.clusterID, participantID)
 }
 
 func (k *keyBuilder) message(participantID string, messageID string) string {
-	return fmt.Sprintf("/%s/INSTANCES/%s/MESSAGES/%s", k.ClusterID, participantID, messageID)
+	return fmt.Sprintf("/%s/INSTANCES/%s/MESSAGES/%s", k.clusterID, participantID, messageID)
 }

@@ -48,7 +48,7 @@ func (adm Admin) AddCluster(cluster string) error {
 	}
 	defer conn.Disconnect()
 
-	kb := keyBuilder{ClusterID: cluster}
+	kb := keyBuilder{clusterID: cluster}
 
 	// avoid dup cluster
 	exists, err := conn.Exists(kb.cluster())
@@ -100,7 +100,7 @@ func (adm Admin) DropCluster(cluster string) error {
 	}
 	defer conn.Disconnect()
 
-	kb := keyBuilder{ClusterID: cluster}
+	kb := keyBuilder{clusterID: cluster}
 	return conn.DeleteTree(kb.cluster())
 }
 
@@ -255,7 +255,7 @@ func (adm Admin) AddNode(cluster string, node string) error {
 	}
 
 	// check if node already exists under /<cluster>/CONFIGS/PARTICIPANT/<NODE>
-	kb := keyBuilder{ClusterID: cluster}
+	kb := keyBuilder{clusterID: cluster}
 	path := kb.participantConfig(node)
 	exists, err := conn.Exists(path)
 	if err != nil {
@@ -326,7 +326,7 @@ func (adm Admin) AddResource(cluster string, resource string, partitions int, st
 		return ErrClusterNotSetup
 	}
 
-	keys := keyBuilder{ClusterID: cluster}
+	keys := keyBuilder{clusterID: cluster}
 
 	// make sure the state model def exists
 	if exists, err := conn.Exists(keys.stateModel(stateModel)); !exists || err != nil {

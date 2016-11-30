@@ -177,7 +177,7 @@ func (adm Admin) ListClusters() ([]string, error) {
 }
 
 // SetConfig set the configuration values for the cluster, defined by the config scope
-func (adm Admin) SetConfig(cluster string, scope string, properties map[string]string) error {
+func (adm Admin) SetConfig(cluster string, scope HelixConfigScope, properties map[string]string) error {
 	conn := newConnection(adm.zkSvr)
 	err := conn.Connect()
 	if err != nil {
@@ -185,27 +185,26 @@ func (adm Admin) SetConfig(cluster string, scope string, properties map[string]s
 	}
 	defer conn.Disconnect()
 
-	switch strings.ToUpper(scope) {
-	case "CLUSTER":
+	switch scope {
+	case ConfigScopeCluster:
 		if allow, ok := properties["allowParticipantAutoJoin"]; ok {
 			kb := keyBuilder{clusterID: cluster}
-			path := kb.clusterConfig()
-
 			if strings.ToLower(allow) == "true" {
-				conn.UpdateSimpleField(path, "allowParticipantAutoJoin", "true")
+				// false by default
+				conn.UpdateSimpleField(kb.clusterConfig(), "allowParticipantAutoJoin", "true")
 			}
 		}
-	case "CONSTRAINT":
-	case "PARTICIPANT":
-	case "PARTITION":
-	case "RESOURCE":
+	case ConfigScopeConstraint:
+	case ConfigScopeParticipant:
+	case ConfigScopePartition:
+	case ConfigScopeResource:
 	}
 
 	return nil
 }
 
 // GetConfig obtains the configuration value of a property, defined by a config scope
-func (adm Admin) GetConfig(cluster string, scope string, keys []string) map[string]interface{} {
+func (adm Admin) GetConfig(cluster string, scope HelixConfigScope, keys []string) map[string]interface{} {
 	conn := newConnection(adm.zkSvr)
 	err := conn.Connect()
 	if err != nil {
@@ -216,17 +215,15 @@ func (adm Admin) GetConfig(cluster string, scope string, keys []string) map[stri
 	result := make(map[string]interface{})
 
 	switch scope {
-	case "CLUSTER":
-		kb := keyBuilder{cluster}
-		path := kb.clusterConfig()
-
+	case ConfigScopeCluster:
+		kb := keyBuilder{clusterID: cluster}
 		for _, k := range keys {
-			result[k] = conn.GetSimpleFieldValueByKey(path, k)
+			result[k] = conn.GetSimpleFieldValueByKey(kb.clusterConfig(), k)
 		}
-	case "CONSTRAINT":
-	case "PARTICIPANT":
-	case "PARTITION":
-	case "RESOURCE":
+	case ConfigScopeConstraint:
+	case ConfigScopeParticipant:
+	case ConfigScopePartition:
+	case ConfigScopeResource:
 	}
 
 	return result
@@ -312,10 +309,11 @@ func (adm Admin) DropNode(cluster string, node string) error {
 	return nil
 }
 
-// AddResource implements the helix-admin.sh --addResource
-// # helix-admin.sh --zkSvr <zk_address> --addResource <clustername> <resourceName> <numPartitions> <StateModelName>
-// ./helix-admin.sh --zkSvr localhost:2199 --addResource MYCLUSTER myDB 6 MasterSlave
-func (adm Admin) AddResource(cluster string, resource string, partitions int, stateModel string) error {
+func (adm Admin) AddResourceWithOption(cluster string, resource string, option AddResourceOption) error {
+	if err := option.validate(); err != nil {
+		return err
+	}
+
 	conn := newConnection(adm.zkSvr)
 	err := conn.Connect()
 	if err != nil {
@@ -330,36 +328,40 @@ func (adm Admin) AddResource(cluster string, resource string, partitions int, st
 	kb := keyBuilder{clusterID: cluster}
 
 	// make sure the state model def exists
-	if exists, err := conn.Exists(kb.stateModel(stateModel)); !exists || err != nil {
+	if exists, err := conn.Exists(kb.stateModel(option.StateModel)); !exists || err != nil {
 		return ErrStateModelDefNotExist
 	}
 
 	// make sure the path for the ideal state does not exit
-	isPath := kb.idealStates() + "/" + resource
-	if exists, err := conn.Exists(isPath); exists || err != nil {
+	if exists, err := conn.Exists(kb.idealStateForResource(resource)); exists || err != nil {
 		if exists {
 			return ErrResourceExists
 		}
 		return err
 	}
 
-	// create the idealstate for the resource
-	// is := NewIdealState(resource)
-	// is.SetNumPartitions(partitions)
-	// is.SetReplicas(0)
-	// is.SetRebalanceMode("SEMI_AUTO")
-	// is.SetStateModelDefRef(stateModel)
-	// // save the ideal state in zookeeper
-	// is.Save(conn, cluster)
-
 	is := NewRecord(resource)
-	is.SetSimpleField("NUM_PARTITIONS", strconv.Itoa(partitions))
-	is.SetSimpleField("REPLICAS", strconv.Itoa(0))                    // TODO
-	is.SetSimpleField("REBALANCE_MODE", strings.ToUpper("SEMI_AUTO")) // TODO
-	is.SetSimpleField("STATE_MODEL_DEF_REF", stateModel)
-	conn.CreateRecordWithPath(isPath, is)
+	is.SetSimpleField("NUM_PARTITIONS", strconv.Itoa(option.Partitions))
+	is.SetSimpleField("REPLICAS", "0")
+	is.SetSimpleField("REBALANCE_MODE", option.RebalancerMode) // TODO
+	is.SetSimpleField("STATE_MODEL_DEF_REF", option.StateModel)
+	is.SetSimpleField("STATE_MODEL_FACTORY_NAME", "DEFAULT")
+	if option.MaxPartitionsPerInstance > 0 {
+		is.SetIntField("MAX_PARTITIONS_PER_INSTANCE", option.MaxPartitionsPerInstance)
+	}
+	if option.BucketSize > 0 {
+		is.SetSimpleField("BUCKET_SIZE", strconv.Itoa(option.BucketSize))
+	}
 
-	return nil
+	return conn.CreateRecordWithPath(kb.idealStateForResource(resource), is)
+}
+
+// AddResource implements the helix-admin.sh --addResource
+// # helix-admin.sh --zkSvr <zk_address> --addResource <clustername> <resourceName> <numPartitions> <StateModelName>
+// ./helix-admin.sh --zkSvr localhost:2199 --addResource MYCLUSTER myDB 6 MasterSlave
+func (adm Admin) AddResource(cluster string, resource string, partitions int, stateModel string) error {
+	option := DefaultAddResourceOption(partitions, stateModel)
+	return adm.AddResourceWithOption(cluster, resource, option)
 }
 
 // DropResource removes the specified resource from the cluster.

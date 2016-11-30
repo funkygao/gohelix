@@ -5,6 +5,14 @@ import (
 )
 
 const (
+	ConfigScopeCluster     HelixConfigScope = "CLUSTER"
+	ConfigScopeParticipant HelixConfigScope = "PARTICIPANT"
+	ConfigScopeResource    HelixConfigScope = "RESOURCE"
+	ConfigScopeConstraint  HelixConfigScope = "CONSTRAINT"
+	ConfigScopePartition   HelixConfigScope = "PARTITION"
+)
+
+const (
 	zkSessionTimeout = time.Second * 20
 
 	StateModelLeaderStandby      = "LeaderStandby"

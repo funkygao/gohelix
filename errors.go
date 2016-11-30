@@ -32,4 +32,6 @@ var (
 	// ErrEnsureParticipantConfig is returned when participant configuration cannot be
 	// created in zookeeper
 	ErrEnsureParticipantConfig = errors.New("Participant configuration could not be added")
+
+	ErrInvalidAddResourceOption = errors.New("Invalid AddResourceOption")
 )

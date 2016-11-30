@@ -410,8 +410,7 @@ func (adm Admin) EnableResource(cluster string, resource string) error {
 	}
 
 	// TODO: set the value at leaf node instead of the record level
-	conn.UpdateSimpleField(isPath, "HELIX_ENABLED", "true")
-	return nil
+	return conn.UpdateSimpleField(isPath, "HELIX_ENABLED", "true")
 }
 
 // DisableResource disables the specified resource in the cluster.
@@ -438,22 +437,7 @@ func (adm Admin) DisableResource(cluster string, resource string) error {
 		return err
 	}
 
-	conn.UpdateSimpleField(isPath, "HELIX_ENABLED", "false")
-
-	return nil
-}
-
-// Rebalance not implemented yet TODO
-func (adm Admin) Rebalance(cluster string, resource string, replicationFactor int) {
-	conn := newConnection(adm.zkSvr)
-	err := conn.Connect()
-	if err != nil {
-		fmt.Println("Failed to connect to zookeeper.")
-		return
-	}
-	defer conn.Disconnect()
-
-	fmt.Println("Not implemented")
+	return conn.UpdateSimpleField(isPath, "HELIX_ENABLED", "false")
 }
 
 // ListResources shows a list of resources managed by the helix cluster
@@ -557,4 +541,17 @@ func (adm Admin) GetInstances(cluster string) ([]string, error) {
 
 	kb := keyBuilder{clusterID: cluster}
 	return conn.Children(kb.instances())
+}
+
+// Rebalance not implemented yet TODO
+func (adm Admin) Rebalance(cluster string, resource string, replica int) {
+	conn := newConnection(adm.zkSvr)
+	err := conn.Connect()
+	if err != nil {
+		fmt.Println("Failed to connect to zookeeper.")
+		return
+	}
+	defer conn.Disconnect()
+
+	fmt.Println("Not implemented")
 }

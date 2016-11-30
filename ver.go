@@ -1,3 +1,3 @@
 package gohelix
 
-const ver = "gohelix-0.4"
+const Ver = "gohelix-0.4"

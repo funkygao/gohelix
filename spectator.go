@@ -25,7 +25,7 @@ type Spectator struct {
 	ClusterID string
 
 	// zookeeper connection string
-	zkConnStr string
+	zkSvr string
 
 	// external view change handler
 	externalViewListeners         []ExternalViewChangeListener
@@ -75,7 +75,7 @@ func (s *Spectator) Connect() error {
 		return nil
 	}
 
-	s.conn = newConnection(s.zkConnStr)
+	s.conn = newConnection(s.zkSvr)
 	if err := s.conn.Connect(); err != nil {
 		return err
 	}

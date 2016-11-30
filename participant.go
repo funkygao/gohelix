@@ -27,7 +27,7 @@ type Participant struct {
 	conn *connection
 
 	// zookeeper connection string
-	zkConnStr string
+	zkSvr string
 
 	// The cluster this participant belongs to
 	ClusterID string
@@ -82,7 +82,7 @@ func (p *Participant) Connect() error {
 	}
 
 	if !p.conn.IsConnected() {
-		p.conn = newConnection(p.zkConnStr)
+		p.conn = newConnection(p.zkSvr)
 		p.conn.Connect()
 	}
 

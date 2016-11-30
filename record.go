@@ -149,7 +149,7 @@ func NewLiveInstanceNode(participantID string, sessionID string) *Record {
 	}
 
 	node := NewRecord(participantID)
-	node.SetSimpleField("HELIX_VERSION", ver)
+	node.SetSimpleField("HELIX_VERSION", Ver)
 	node.SetSimpleField("SESSION_ID", sessionID)
 	node.SetSimpleField("LIVE_INSTANCE", fmt.Sprintf("%d@%s", os.Getpid(), hostname))
 

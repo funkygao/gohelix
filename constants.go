@@ -5,6 +5,16 @@ import (
 )
 
 const (
+	exteralViewChanged        changeNotificationType = 0
+	liveInstanceChanged       changeNotificationType = 1
+	idealStateChanged         changeNotificationType = 2
+	currentStateChanged       changeNotificationType = 3
+	instanceConfigChanged     changeNotificationType = 4
+	controllerMessagesChanged changeNotificationType = 5
+	instanceMessagesChanged   changeNotificationType = 6
+)
+
+const (
 	ConfigScopeCluster     HelixConfigScope = "CLUSTER"
 	ConfigScopeParticipant HelixConfigScope = "PARTICIPANT"
 	ConfigScopeResource    HelixConfigScope = "RESOURCE"

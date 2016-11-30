@@ -264,25 +264,30 @@ func (conn *connection) UpdateMapField(path string, key string, property string,
 	return err
 }
 
-func (conn *connection) UpdateSimpleField(path string, key string, value string) {
+func (conn *connection) UpdateSimpleField(path string, key string, value string) error {
 	// get the current node
 	data, err := conn.Get(path)
-	must(err)
+	if err != nil {
+		return err
+	}
 
 	// convert the result into Record
 	node, err := NewRecordFromBytes(data)
-	must(err)
+	if err != nil {
+		return err
+	}
 
 	// update the value
 	node.SetSimpleField(key, value)
 
 	// mashall to bytes
 	data, err = node.Marshal()
-	must(err)
+	if err != nil {
+		return err
+	}
 
 	// copy back to zookeeper
-	err = conn.Set(path, data)
-	must(err)
+	return conn.Set(path, data)
 }
 
 func (conn *connection) GetSimpleFieldValueByKey(path string, key string) string {
